@@ -25,6 +25,46 @@ function App() {
     "Tente VIP": "#7f7f86",
   };
 
+  const times = [
+    "05:30",
+    "06:00",
+    "06:30",
+    "07:00",
+    "07:30",
+    "08:00",
+    "08:30",
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:00",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "19:30",
+    "20:00",
+    "20:30",
+    "21:00",
+    "21:30",
+    "22:00",
+    "22:30",
+    "23:00",
+    "23:30",
+  ];
+
   return (
     <div
       style={{
@@ -144,47 +184,87 @@ function App() {
 
         <div
           style={{
-            minWidth: "1200px",
+            minWidth: "1300px",
             display: "grid",
             gridTemplateColumns:
-              "repeat(7, 1fr)",
+              "70px repeat(7, 1fr)",
             borderTop: "1px solid #303137",
             borderLeft: "1px solid #303137",
           }}
         >
+          {/* COIN SUPÉRIEUR GAUCHE */}
+          <div
+            style={{
+              height: "75px",
+              background: "#151619",
+              borderRight: "1px solid #303137",
+              borderBottom: "1px solid #303137",
+            }}
+          />
+
+          {/* NOMS DES ZONES */}
           {zones.map((zone) => (
             <div
               key={zone}
               style={{
-                minHeight: "500px",
-                background: "#151619",
+                height: "75px",
+                padding: "15px 8px",
+                textAlign: "center",
+                background: "#1b1c20",
                 borderRight: "1px solid #303137",
                 borderBottom: "1px solid #303137",
+                fontWeight: "bold",
+                fontSize: "12px",
               }}
             >
               <div
                 style={{
-                  padding: "18px 10px",
-                  textAlign: "center",
-                  background: "#1b1c20",
+                  width: "35px",
+                  height: "4px",
+                  borderRadius: "4px",
+                  background: zoneColors[zone],
+                  margin: "0 auto 9px auto",
+                }}
+              />
+
+              {zone}
+            </div>
+          ))}
+
+          {/* HEURES ET CELLULES */}
+          {times.map((time) => (
+            <React.Fragment key={time}>
+              {/* HEURE */}
+              <div
+                style={{
+                  height: "55px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  paddingRight: "8px",
+                  background: "#151619",
+                  color: "#8f9098",
+                  fontSize: "11px",
+                  borderRight: "1px solid #303137",
                   borderBottom: "1px solid #303137",
-                  fontWeight: "bold",
-                  fontSize: "13px",
                 }}
               >
+                {time}
+              </div>
+
+              {/* 7 ZONES */}
+              {zones.map((zone) => (
                 <div
+                  key={time + "-" + zone}
                   style={{
-                    width: "35px",
-                    height: "4px",
-                    borderRadius: "4px",
-                    background: zoneColors[zone],
-                    margin: "0 auto 10px auto",
+                    height: "55px",
+                    background: "#151619",
+                    borderRight: "1px solid #303137",
+                    borderBottom: "1px solid #303137",
                   }}
                 />
-
-                {zone}
-              </div>
-            </div>
+              ))}
+            </React.Fragment>
           ))}
         </div>
       </main>
