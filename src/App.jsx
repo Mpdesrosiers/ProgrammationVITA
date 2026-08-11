@@ -129,31 +129,32 @@ const timeSlots = [
 
 function timeToMinutes(time) {
   const parts = time.split(":");
-  const hours = Number(parts[0]);
-  const minutes = Number(parts[1]);
-
-  return hours * 60 + minutes;
+  return Number(parts[0]) * 60 + Number(parts[1]);
 }
 
 function App() {
   const [selectedDay, setSelectedDay] = useState("Vendredi");
   const [selectedVolet, setSelectedVolet] = useState("Tous");
 
-  const filteredActivities = useMemo(() => {
-    return activities.filter((activity) => {
-      const matchesDay = activity.day === selectedDay;
+  const filteredActivities = useMemo(function () {
+    return activities.filter(function (activity) {
+      if (activity.day !== selectedDay) {
+        return false;
+      }
 
-      const matchesVolet =
-        selectedVolet === "Tous" ||
-        activity.volet === selectedVolet;
+      if (
+        selectedVolet !== "Tous" &&
+        activity.volet !== selectedVolet
+      ) {
+        return false;
+      }
 
-      return matchesDay && matchesVolet;
+      return true;
     });
   }, [selectedDay, selectedVolet]);
 
   return (
     <div className="min-h-screen bg-[#151619] text-[#ebebed]">
-      {/* HEADER */}
       <header className="border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
         <div className="mx-auto max-w-[1800px]">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -168,29 +169,41 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* JOURS */}
-              {["Vendredi", "Samedi"].map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  className={
-                    "rounded-md px-4 py-2 text-sm font-medium transition " +
-                    (selectedDay === day
-                      ? "bg-[#8580d9] text-[#151619]"
-                      : "bg-[#303137] text-[#ebebed] hover:bg-[#3c3d43]")
-                  }
-                >
-                  {day}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={function () {
+                  setSelectedDay("Vendredi");
+                }}
+                className={
+                  "rounded-md px-4 py-2 text-sm font-medium " +
+                  (selectedDay === "Vendredi"
+                    ? "bg-[#8580d9] text-[#151619]"
+                    : "bg-[#303137] text-[#ebebed]")
+                }
+              >
+                Vendredi
+              </button>
 
-              {/* VOLET */}
+              <button
+                type="button"
+                onClick={function () {
+                  setSelectedDay("Samedi");
+                }}
+                className={
+                  "rounded-md px-4 py-2 text-sm font-medium " +
+                  (selectedDay === "Samedi"
+                    ? "bg-[#8580d9] text-[#151619]"
+                    : "bg-[#303137] text-[#ebebed]")
+                }
+              >
+                Samedi
+              </button>
+
               <select
                 value={selectedVolet}
-                onChange={(event) =>
-                  setSelectedVolet(event.target.value)
-                }
+                onChange={function (event) {
+                  setSelectedVolet(event.target.value);
+                }}
                 className="rounded-md border border-[#3c3d43] bg-[#1b1c20] px-3 py-2 text-sm text-[#ebebed]"
               >
                 <option value="Tous">Tous</option>
@@ -203,7 +216,6 @@ function App() {
         </div>
       </header>
 
-      {/* CALENDRIER */}
       <main className="mx-auto max-w-[1800px] overflow-x-auto p-6">
         <div
           className="grid min-w-[1350px]"
@@ -212,84 +224,78 @@ function App() {
               "90px repeat(7, minmax(180px, 1fr))",
           }}
         >
-          {/* COIN SUPÉRIEUR GAUCHE */}
           <div className="border-b border-r border-[#303137] bg-[#151619]" />
 
-          {/* NOMS DES ZONES */}
-          {zones.map((zone) => (
-            <div
-              key={zone}
-              className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center text-sm font-semibold"
-            >
+          {zones.map(function (zone) {
+            return (
               <div
-                className="mx-auto mb-2 h-1 w-8 rounded-full"
-                style={{
-                  backgroundColor: zoneColors[zone],
-                }}
-              />
+                key={zone}
+                className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center text-sm font-semibold"
+              >
+                <div
+                  className="mx-auto mb-2 h-1 w-8 rounded-full"
+                  style={{
+                    backgroundColor: zoneColors[zone],
+                  }}
+                />
 
-              {zone}
-            </div>
-          ))}
+                {zone}
+              </div>
+            );
+          })}
 
-          {/* HEURES */}
-          {timeSlots.map((time) => {
+          {timeSlots.map(function (time) {
             const currentMinutes = timeToMinutes(time);
 
             return (
               <React.Fragment key={time}>
-                {/* HEURE */}
                 <div className="flex min-h-[52px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-2 text-xs text-[#a1a1a8]">
                   {time}
                 </div>
 
-                {/* ZONES */}
-                {zones.map((zone) => {
+                {zones.map(function (zone) {
                   const matchingActivities =
-                    filteredActivities.filter((activity) => {
-                      const activityStart = timeToMinutes(
-                        activity.start
-                      );
-
-                      const activityEnd = timeToMinutes(
-                        activity.end
-                      );
+                    filteredActivities.filter(function (activity) {
+                      const start = timeToMinutes(activity.start);
+                      const end = timeToMinutes(activity.end);
 
                       return (
                         activity.zone === zone &&
-                        activityStart <= currentMinutes &&
-                        activityEnd > currentMinutes
+                        start <= currentMinutes &&
+                        end > currentMinutes
                       );
                     });
 
                   return (
                     <div
-                      key={`${time}-${zone}`}
+                      key={time + "-" + zone}
                       className="relative min-h-[52px] border-b border-r border-[#303137] bg-[#151619]"
                     >
-                      {matchingActivities.map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="absolute inset-x-1 top-1 z-10 rounded-md p-2 text-xs shadow-lg"
-                          style={{
-                            backgroundColor:
-                              zoneColors[activity.zone],
-                            color: "#151619",
-                          }}
-                        >
-                          <div className="font-semibold">
-                            {activity.name}
-                          </div>
+                      {matchingActivities.map(function (activity) {
+                        return (
+                          <div
+                            key={activity.id}
+                            className="absolute inset-x-1 top-1 z-10 rounded-md p-2 text-xs shadow-lg"
+                            style={{
+                              backgroundColor:
+                                zoneColors[activity.zone],
+                              color: "#151619",
+                            }}
+                          >
+                            <div className="font-semibold">
+                              {activity.name}
+                            </div>
 
-                          <div className="mt-1 opacity-80">
-                            {activity.start} – {activity.end}
-                          </div>
+                            <div className="mt-1 opacity-80">
+                              {activity.start} - {activity.end}
+                            </div>
 
-                          <div className="mt-1 text-[10px] font-medium uppercase opacity-70">
-                            {activity.volet}
+                            <div className="mt-1 text-[10px] font-medium uppercase opacity-70">
+                              {activity.volet}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -299,7 +305,6 @@ function App() {
         </div>
       </main>
 
-      {/* LÉGENDE */}
       <section className="mx-auto max-w-[1800px] px-6 pb-6">
         <div className="rounded-lg border border-[#303137] bg-[#1b1c20] p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#a1a1a8]">
@@ -307,26 +312,27 @@ function App() {
           </p>
 
           <div className="flex flex-wrap gap-4">
-            {zones.map((zone) => (
-              <div
-                key={zone}
-                className="flex items-center gap-2 text-xs text-[#ebebed]"
-              >
-                <span
-                  className="h-3 w-3 rounded-full"
-                  style={{
-                    backgroundColor: zoneColors[zone],
-                  }}
-                />
+            {zones.map(function (zone) {
+              return (
+                <div
+                  key={zone}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  <span
+                    className="h-3 w-3 rounded-full"
+                    style={{
+                      backgroundColor: zoneColors[zone],
+                    }}
+                  />
 
-                {zone}
-              </div>
-            ))}
+                  {zone}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
       <footer className="border-t border-[#303137] px-6 py-4 text-center text-xs text-[#a1a1a8]">
         Programmation VITA 2026
       </footer>
