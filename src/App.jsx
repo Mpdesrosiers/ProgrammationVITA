@@ -1,124 +1,190 @@
-```jsx
-import React from "react";
-
-const zones = [
-  "Terrain synthétique",
-  "Asphalte",
-  "Zone démo",
-  "Zone Famille",
-  "Kiosques",
-  "Scène",
-  "Tente VIP",
-];
-
-const days = ["Jeudi", "Vendredi", "Samedi", "Dimanche"];
-
 function App() {
   return (
-    <div className="min-h-screen bg-[#151619] text-[#ebebed]">
-
-      <header className="border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
-        <div className="mx-auto max-w-[1800px]">
-
-          <div className="mb-5">
-            <div className="text-sm font-semibold text-[#8580d9]">
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#151619",
+        color: "#ebebed",
+        fontFamily: "Arial, sans-serif",
+        padding: "40px",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "40px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                color: "#8580d9",
+                fontSize: "14px",
+                fontWeight: "bold",
+                marginBottom: "8px",
+              }}
+            >
               FESTIVAL VITA 2026
             </div>
 
-            <h1 className="mt-1 text-2xl font-semibold">
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "32px",
+              }}
+            >
               Programmation
             </h1>
           </div>
 
-          <div className="flex gap-2">
-            {days.map(function (day) {
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  className="rounded-md bg-[#303137] px-5 py-2 text-sm font-semibold text-white"
-                >
-                  {day}
-                </button>
-              );
-            })}
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              style={{
+                backgroundColor: "#8580d9",
+                color: "#151619",
+                border: "none",
+                borderRadius: "8px",
+                padding: "12px 20px",
+                fontWeight: "bold",
+              }}
+            >
+              Jeudi
+            </button>
+
+            <button
+              style={{
+                backgroundColor: "#303137",
+                color: "#ebebed",
+                border: "none",
+                borderRadius: "8px",
+                padding: "12px 20px",
+                fontWeight: "bold",
+              }}
+            >
+              Vendredi
+            </button>
+
+            <button
+              style={{
+                backgroundColor: "#303137",
+                color: "#ebebed",
+                border: "none",
+                borderRadius: "8px",
+                padding: "12px 20px",
+                fontWeight: "bold",
+              }}
+            >
+              Samedi
+            </button>
+
+            <button
+              style={{
+                backgroundColor: "#303137",
+                color: "#ebebed",
+                border: "none",
+                borderRadius: "8px",
+                padding: "12px 20px",
+                fontWeight: "bold",
+              }}
+            >
+              Dimanche
+            </button>
           </div>
-
         </div>
-      </header>
 
-      <main className="overflow-x-auto p-6">
-
-        <div className="mx-auto min-w-[1400px] max-w-[1800px]">
-
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "20px",
+          }}
+        >
           <div
-            className="grid"
             style={{
-              gridTemplateColumns: "100px repeat(7, 1fr)",
+              backgroundColor: "#1b1c20",
+              border: "1px solid #303137",
+              borderRadius: "12px",
+              padding: "24px",
             }}
           >
+            <div
+              style={{
+                width: "40px",
+                height: "4px",
+                backgroundColor: "#00c875",
+                borderRadius: "4px",
+                marginBottom: "20px",
+              }}
+            />
 
-            <div className="border-b border-r border-[#303137] bg-[#151619]" />
+            <h2 style={{ marginTop: 0 }}>BOUGER</h2>
 
-            {zones.map(function (zone) {
-              return (
-                <div
-                  key={zone}
-                  className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center text-sm font-semibold"
-                >
-                  {zone}
-                </div>
-              );
-            })}
-
-            <div className="border-b border-r border-[#303137] bg-[#151619] p-3 text-right text-xs text-[#a1a1a8]">
-              09:00
-            </div>
-
-            {zones.map(function (zone) {
-              return (
-                <div
-                  key={zone}
-                  className="h-20 border-b border-r border-[#303137] bg-[#151619]"
-                />
-              );
-            })}
-
-            <div className="border-b border-r border-[#303137] bg-[#151619] p-3 text-right text-xs text-[#a1a1a8]">
-              09:30
-            </div>
-
-            {zones.map(function (zone) {
-              return (
-                <div
-                  key={zone}
-                  className="h-20 border-b border-r border-[#303137] bg-[#151619]"
-                />
-              );
-            })}
-
-            <div className="border-b border-r border-[#303137] bg-[#151619] p-3 text-right text-xs text-[#a1a1a8]">
-              10:00
-            </div>
-
-            {zones.map(function (zone) {
-              return (
-                <div
-                  key={zone}
-                  className="h-20 border-b border-r border-[#303137] bg-[#151619]"
-                />
-              );
-            })}
-
+            <p style={{ color: "#a1a1a8" }}>
+              Activités sportives et démonstrations.
+            </p>
           </div>
 
+          <div
+            style={{
+              backgroundColor: "#1b1c20",
+              border: "1px solid #303137",
+              borderRadius: "12px",
+              padding: "24px",
+            }}
+          >
+            <div
+              style={{
+                width: "40px",
+                height: "4px",
+                backgroundColor: "#8580d9",
+                borderRadius: "4px",
+                marginBottom: "20px",
+              }}
+            />
+
+            <h2 style={{ marginTop: 0 }}>FÊTER</h2>
+
+            <p style={{ color: "#a1a1a8" }}>
+              Animations et programmation festive.
+            </p>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: "#1b1c20",
+              border: "1px solid #303137",
+              borderRadius: "12px",
+              padding: "24px",
+            }}
+          >
+            <div
+              style={{
+                width: "40px",
+                height: "4px",
+                backgroundColor: "#fdab3d",
+                borderRadius: "4px",
+                marginBottom: "20px",
+              }}
+            />
+
+            <h2 style={{ marginTop: 0 }}>S'INSPIRER</h2>
+
+            <p style={{ color: "#a1a1a8" }}>
+              Kiosques, partenaires et découvertes.
+            </p>
+          </div>
         </div>
-
-      </main>
-
+      </div>
     </div>
   );
 }
 
 export default App;
-```
