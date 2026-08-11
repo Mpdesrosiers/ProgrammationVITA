@@ -2,9 +2,20 @@ export default async function handler(req, res) {
   try {
     const query = `
       query {
-        me {
+        boards(ids: [18425508055]) {
+          id
           name
-          email
+          items_page(limit: 10) {
+            items {
+              id
+              name
+              column_values {
+                id
+                text
+                value
+              }
+            }
+          }
         }
       }
     `;
