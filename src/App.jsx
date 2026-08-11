@@ -1,6 +1,4 @@
-import React, { useState } from "react";
-
-const days = ["Jeudi", "Vendredi", "Samedi", "Dimanche"];
+import React, { useEffect, useMemo, useState } from "react";
 
 const zones = [
   "Terrain synthétique",
@@ -12,49 +10,11 @@ const zones = [
   "Tente VIP",
 ];
 
-const zoneColors = {
-  "Terrain synthétique": "#00c875",
-  Asphalte: "#df2f4a",
-  "Zone démo": "#007eb5",
-  "Zone Famille": "#9d50dd",
-  Kiosques: "#fdab3d",
-  Scène: "#8580d9",
-  "Tente VIP": "#7f7f86",
-};
-
-const initialActivities = [
-  {
-    id: 1,
-    name: "Yoga",
-    day: "Vendredi",
-    zone: "Terrain synthétique",
-    start: "09:00",
-    end: "10:00",
-  },
-  {
-    id: 2,
-    name: "Démonstration sportive",
-    day: "Vendredi",
-    zone: "Zone démo",
-    start: "10:00",
-    end: "11:30",
-  },
-  {
-    id: 3,
-    name: "Animation famille",
-    day: "Vendredi",
-    zone: "Zone Famille",
-    start: "11:00",
-    end: "12:30",
-  },
-  {
-    id: 4,
-    name: "Animation scène",
-    day: "Samedi",
-    zone: "Scène",
-    start: "13:00",
-    end: "14:00",
-  },
+const days = [
+  { label: "Jeudi", date: "2026-09-17" },
+  { label: "Vendredi", date: "2026-09-18" },
+  { label: "Samedi", date: "2026-09-19" },
+  { label: "Dimanche", date: "2026-09-20" },
 ];
 
 const times = [
@@ -97,73 +57,134 @@ const times = [
   "23:30",
 ];
 
-function timeToMinutes(time) {
-  const parts = time.split(":");
-  return Number(parts[0]) * 60 + Number(parts[1]);
+const zoneColors = {
+  "Terrain synthétique": "#00c875",
+  Asphalte: "#df2f4a",
+  "Zone démo": "#007eb5",
+  "Zone Famille": "#9d50dd",
+  Kiosques: "#fdab3d",
+  Scène: "#8580d9",
+  "Tente VIP": "#7f7f86",
+};
+
+function getColumn(item, index) {
+  return item.column_values?.[index]?.text || "";
 }
 
-function minutesToTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+function getDateFromMonday(item) {
+  const value = item.column_values?.[1]?.value;
 
-  return (
-    String(hours).padStart(2, "0") +
-    ":" +
-    String(mins).padStart(2, "0")
-  );
+  try {
+    return JSON.parse(value || "{}").date || "";
+  } catch {
+    return "";
+  }
+}
+
+function getTimeFromText(text) {
+  if (!text) return "";
+
+  const match = text.match(/(\d{2}:\d{2})$/);
+  return match ? match[1] : "";
+}
+
+function timeToMinutes(time) {
+  if (!time) return 0;
+
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
 }
 
 function App() {
-  const [selectedDay, setSelectedDay] = useState("Vendredi");
+  const [selectedDay, setSelectedDay] = useState("2026-09-18");
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [activities, setActivities] = useState(
-    initialActivities
-  );
+  useEffect(() => {
+    async function loadMonday() {
+      try {
+        setLoading(true);
 
-  const [draggedActivity, setDraggedActivity] =
-    useState(null);
+        const response = await fetch("/api/monday");
+        const data = await response.json();
 
-  const visibleActivities = activities.filter(
-    (activity) => activity.day === selectedDay
-  );
-
-  function handleDragStart(activityId) {
-    setDraggedActivity(activityId);
-  }
-
-  function handleDrop(zone, time) {
-    if (draggedActivity === null) {
-      return;
-    }
-
-    setActivities((currentActivities) =>
-      currentActivities.map((activity) => {
-
-        if (activity.id !== draggedActivity) {
-          return activity;
+        if (!response.ok || data.error) {
+          throw new Error(
+            data.details?.[0]?.message ||
+              data.error ||
+              "Impossible de charger Monday"
+          );
         }
 
-        const duration =
-          timeToMinutes(activity.end) -
-          timeToMinutes(activity.start);
+        const items =
+          data.data?.boards?.[0]?.items_page?.items || [];
 
-        const newStart = timeToMinutes(time);
-        const newEnd = newStart + duration;
+        const formatted = items
+          .map((item) => {
+            const date = getDateFromMonday(item);
 
-        return {
-          ...activity,
-          zone: zone,
-          start: minutesToTime(newStart),
-          end: minutesToTime(newEnd),
-        };
-      })
+            const startText = getColumn(item, 2);
+            const endText = getColumn(item, 3);
+
+            return {
+              id: item.id,
+              activite: item.name,
+              date,
+              debut: getTimeFromText(startText),
+              fin: getTimeFromText(endText),
+              volet: getColumn(item, 4),
+              zone: getColumn(item, 5),
+              mode: getColumn(item, 6),
+              status: getColumn(item, 7),
+              affichage: getColumn(item, 8),
+              categorieCouleur: getColumn(item, 9),
+              notes: getColumn(item, 10),
+            };
+          })
+          .filter((activity) => activity.date);
+
+        setActivities(formatted);
+        setError("");
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadMonday();
+  }, []);
+
+  const selectedActivities = useMemo(() => {
+    return activities.filter(
+      (activity) => activity.date === selectedDay
     );
+  }, [activities, selectedDay]);
 
-    setDraggedActivity(null);
-  }
+  function getActivityStyle(activity) {
+    const start = timeToMinutes(activity.debut);
+    const end = timeToMinutes(activity.fin);
 
-  function handleDragEnd() {
-    setDraggedActivity(null);
+    const calendarStart = 5 * 60 + 30;
+    const pixelsPer30Minutes = 56;
+
+    const top =
+      ((start - calendarStart) / 30) * pixelsPer30Minutes;
+
+    const height =
+      Math.max(
+        ((end - start) / 30) * pixelsPer30Minutes,
+        40
+      );
+
+    return {
+      top: `${top}px`,
+      height: `${height}px`,
+      backgroundColor:
+        zoneColors[activity.zone] || "#8580d9",
+    };
   }
 
   return (
@@ -183,31 +204,25 @@ function App() {
               <h1 className="mt-1 text-2xl font-semibold">
                 Programmation
               </h1>
-
-              <p className="mt-1 text-xs text-[#8580d9]">
-                Glissez-déposez les activités pour les déplacer
-              </p>
             </div>
 
-            {/* JOURS */}
+            {/* DAYS */}
             <div className="flex gap-2">
-
               {days.map((day) => (
                 <button
-                  key={day}
+                  key={day.date}
                   type="button"
-                  onClick={() => setSelectedDay(day)}
+                  onClick={() => setSelectedDay(day.date)}
                   className={
                     "rounded-md px-5 py-2 text-sm font-semibold transition " +
-                    (selectedDay === day
+                    (selectedDay === day.date
                       ? "bg-[#8580d9] text-[#151619]"
-                      : "bg-[#303137] text-white hover:bg-[#3c3d43]")
+                      : "bg-[#303137] text-white hover:bg-[#404148]")
                   }
                 >
-                  {day}
+                  {day.label}
                 </button>
               ))}
-
             </div>
 
           </div>
@@ -215,128 +230,103 @@ function App() {
         </div>
       </header>
 
-      {/* CALENDRIER */}
+      {/* CONTENT */}
       <main className="overflow-x-auto p-6">
 
-        <div
-          className="mx-auto grid min-w-[1400px] max-w-[1800px]"
-          style={{
-            gridTemplateColumns:
-              "80px repeat(7, minmax(180px, 1fr))",
-          }}
-        >
+        {loading && (
+          <div className="mx-auto max-w-[1800px] py-10 text-center text-[#a1a1a8]">
+            Chargement de la programmation…
+          </div>
+        )}
 
-          {/* COIN */}
-          <div className="border-b border-r border-[#303137] bg-[#151619]" />
+        {error && (
+          <div className="mx-auto max-w-[1800px] rounded-lg border border-[#df2f4a] bg-[#24171a] p-5 text-[#ff8b9a]">
+            Erreur : {error}
+          </div>
+        )}
 
-          {/* ZONES */}
-          {zones.map((zone) => (
-            <div
-              key={zone}
-              className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
-            >
+        {!loading && !error && (
+          <div
+            className="mx-auto grid min-w-[1400px] max-w-[1800px]"
+            style={{
+              gridTemplateColumns:
+                "80px repeat(7, minmax(180px, 1fr))",
+            }}
+          >
 
+            {/* EMPTY TOP LEFT */}
+            <div className="border-b border-r border-[#303137] bg-[#151619]" />
+
+            {/* ZONE HEADERS */}
+            {zones.map((zone) => (
               <div
-                className="mx-auto mb-2 h-1 w-10 rounded-full"
-                style={{
-                  backgroundColor: zoneColors[zone],
-                }}
-              />
+                key={zone}
+                className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
+              >
+                <div
+                  className="mx-auto mb-2 h-1 w-10 rounded-full"
+                  style={{
+                    backgroundColor: zoneColors[zone],
+                  }}
+                />
 
-              <div className="text-sm font-semibold">
-                {zone}
+                <div className="text-sm font-semibold">
+                  {zone}
+                </div>
               </div>
+            ))}
 
-            </div>
-          ))}
+            {/* CALENDAR */}
+            {times.map((time) => (
+              <React.Fragment key={time}>
 
-          {/* HEURES */}
-          {times.map((time) => (
-            <React.Fragment key={time}>
+                {/* TIME */}
+                <div className="flex h-14 items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
+                  {time}
+                </div>
 
-              {/* HEURE */}
-              <div className="flex h-14 items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
-                {time}
-              </div>
+                {/* ZONES */}
+                {zones.map((zone) => {
 
-              {/* ZONES */}
-              {zones.map((zone) => {
+                  const activitiesHere =
+                    selectedActivities.filter(
+                      (activity) =>
+                        activity.zone === zone &&
+                        timeToMinutes(activity.debut) ===
+                          timeToMinutes(time)
+                    );
 
-                const activitiesHere =
-                  visibleActivities.filter(
-                    (activity) =>
-                      activity.zone === zone &&
-                      activity.start === time
-                  );
+                  return (
+                    <div
+                      key={`${time}-${zone}`}
+                      className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
+                    >
 
-                return (
-                  <div
-                    key={time + zone}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                    }}
-                    onDrop={() => {
-                      handleDrop(zone, time);
-                    }}
-                    className={
-                      "relative h-14 border-b border-r border-[#303137] bg-[#151619] transition " +
-                      (draggedActivity !== null
-                        ? "hover:bg-[#25262b]"
-                        : "")
-                    }
-                  >
-
-                    {activitiesHere.map((activity) => {
-
-                      const duration =
-                        timeToMinutes(activity.end) -
-                        timeToMinutes(activity.start);
-
-                      const height =
-                        (duration / 30) * 56 - 4;
-
-                      return (
+                      {activitiesHere.map((activity) => (
                         <div
                           key={activity.id}
-                          draggable
-                          onDragStart={() =>
-                            handleDragStart(activity.id)
-                          }
-                          onDragEnd={handleDragEnd}
-                          className={
-                            "absolute left-1 right-1 top-1 z-10 cursor-grab rounded-md p-2 text-xs shadow-lg transition hover:brightness-110 active:cursor-grabbing " +
-                            (draggedActivity === activity.id
-                              ? "opacity-50"
-                              : "")
-                          }
-                          style={{
-                            height: `${height}px`,
-                            backgroundColor:
-                              zoneColors[activity.zone],
-                            color: "#151619",
-                          }}
+                          className="absolute left-1 right-1 z-10 overflow-hidden rounded-md p-2 text-xs font-semibold text-white shadow-lg"
+                          style={getActivityStyle(activity)}
                         >
-
-                          <div className="font-semibold">
-                            {activity.name}
+                          <div>
+                            {activity.activite}
                           </div>
 
-                          <div className="mt-1 text-[11px] opacity-75">
-                            {activity.start} – {activity.end}
+                          <div className="mt-1 text-[10px] font-normal opacity-80">
+                            {activity.debut} – {activity.fin}
                           </div>
-
                         </div>
-                      );
-                    })}
+                      ))}
 
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
 
-            </React.Fragment>
-          ))}
+              </React.Fragment>
+            ))}
 
-        </div>
+          </div>
+        )}
 
       </main>
 
