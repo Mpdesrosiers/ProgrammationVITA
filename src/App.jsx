@@ -1,190 +1,114 @@
+```jsx
+import React, { useState } from "react";
+
 function App() {
+  const [selectedDay, setSelectedDay] = useState("Jeudi");
+
+  const days = ["Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#151619",
-        color: "#ebebed",
-        fontFamily: "Arial, sans-serif",
-        padding: "40px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "40px",
-          }}
-        >
+    <div className="min-h-screen bg-[#151619] text-white">
+
+      {/* HEADER */}
+      <header className="border-b border-[#303137] bg-[#1b1c20] px-8 py-6">
+        <div className="flex items-center justify-between">
+
+          {/* TITRE */}
           <div>
-            <div
-              style={{
-                color: "#8580d9",
-                fontSize: "14px",
-                fontWeight: "bold",
-                marginBottom: "8px",
-              }}
-            >
+            <div className="text-sm font-semibold text-[#8580d9]">
               FESTIVAL VITA 2026
             </div>
 
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "32px",
-              }}
-            >
+            <h1 className="mt-1 text-2xl font-semibold">
               Programmation
             </h1>
           </div>
 
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              style={{
-                backgroundColor: "#8580d9",
-                color: "#151619",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 20px",
-                fontWeight: "bold",
-              }}
-            >
-              Jeudi
-            </button>
-
-            <button
-              style={{
-                backgroundColor: "#303137",
-                color: "#ebebed",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 20px",
-                fontWeight: "bold",
-              }}
-            >
-              Vendredi
-            </button>
-
-            <button
-              style={{
-                backgroundColor: "#303137",
-                color: "#ebebed",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 20px",
-                fontWeight: "bold",
-              }}
-            >
-              Samedi
-            </button>
-
-            <button
-              style={{
-                backgroundColor: "#303137",
-                color: "#ebebed",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 20px",
-                fontWeight: "bold",
-              }}
-            >
-              Dimanche
-            </button>
+          {/* JOURNÉES */}
+          <div className="flex gap-2">
+            {days.map((day) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => setSelectedDay(day)}
+                className={
+                  "rounded-md px-5 py-2 text-sm font-semibold transition " +
+                  (selectedDay === day
+                    ? "bg-[#8580d9] text-[#151619]"
+                    : "bg-[#303137] text-white hover:bg-[#3c3d43]")
+                }
+              >
+                {day}
+              </button>
+            ))}
           </div>
+
+        </div>
+      </header>
+
+      {/* CONTENU */}
+      <main className="mx-auto max-w-[1400px] px-8 py-12">
+
+        {/* JOUR SÉLECTIONNÉ */}
+        <div className="mb-8">
+          <div className="text-sm text-[#8580d9]">
+            JOUR SÉLECTIONNÉ
+          </div>
+
+          <h2 className="mt-1 text-3xl font-semibold">
+            {selectedDay}
+          </h2>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "20px",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "#1b1c20",
-              border: "1px solid #303137",
-              borderRadius: "12px",
-              padding: "24px",
-            }}
-          >
-            <div
-              style={{
-                width: "40px",
-                height: "4px",
-                backgroundColor: "#00c875",
-                borderRadius: "4px",
-                marginBottom: "20px",
-              }}
-            />
+        {/* 3 VOLETS */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
 
-            <h2 style={{ marginTop: 0 }}>BOUGER</h2>
+          {/* BOUGER */}
+          <div className="rounded-xl border border-[#303137] bg-[#1b1c20] p-8">
+            <div className="mb-4 h-2 w-12 rounded-full bg-[#00c875]" />
 
-            <p style={{ color: "#a1a1a8" }}>
-              Activités sportives et démonstrations.
+            <h3 className="text-xl font-semibold">
+              BOUGER
+            </h3>
+
+            <p className="mt-3 text-sm text-[#a1a1a8]">
+              Activités sportives et expériences pour bouger.
             </p>
           </div>
 
-          <div
-            style={{
-              backgroundColor: "#1b1c20",
-              border: "1px solid #303137",
-              borderRadius: "12px",
-              padding: "24px",
-            }}
-          >
-            <div
-              style={{
-                width: "40px",
-                height: "4px",
-                backgroundColor: "#8580d9",
-                borderRadius: "4px",
-                marginBottom: "20px",
-              }}
-            />
+          {/* FÊTER */}
+          <div className="rounded-xl border border-[#303137] bg-[#1b1c20] p-8">
+            <div className="mb-4 h-2 w-12 rounded-full bg-[#df2f4a]" />
 
-            <h2 style={{ marginTop: 0 }}>FÊTER</h2>
+            <h3 className="text-xl font-semibold">
+              FÊTER
+            </h3>
 
-            <p style={{ color: "#a1a1a8" }}>
-              Animations et programmation festive.
+            <p className="mt-3 text-sm text-[#a1a1a8]">
+              Animations, musique et moments festifs.
             </p>
           </div>
 
-          <div
-            style={{
-              backgroundColor: "#1b1c20",
-              border: "1px solid #303137",
-              borderRadius: "12px",
-              padding: "24px",
-            }}
-          >
-            <div
-              style={{
-                width: "40px",
-                height: "4px",
-                backgroundColor: "#fdab3d",
-                borderRadius: "4px",
-                marginBottom: "20px",
-              }}
-            />
+          {/* S'INSPIRER */}
+          <div className="rounded-xl border border-[#303137] bg-[#1b1c20] p-8">
+            <div className="mb-4 h-2 w-12 rounded-full bg-[#8580d9]" />
 
-            <h2 style={{ marginTop: 0 }}>S'INSPIRER</h2>
+            <h3 className="text-xl font-semibold">
+              S'INSPIRER
+            </h3>
 
-            <p style={{ color: "#a1a1a8" }}>
-              Kiosques, partenaires et découvertes.
+            <p className="mt-3 text-sm text-[#a1a1a8]">
+              Rencontres, découvertes et inspiration.
             </p>
           </div>
+
         </div>
-      </div>
+
+      </main>
+
     </div>
   );
 }
 
 export default App;
+```
