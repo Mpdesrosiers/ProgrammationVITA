@@ -22,7 +22,7 @@ const zoneColors = {
   "Tente VIP": "#7f7f86",
 };
 
-const activities = [
+const initialActivities = [
   {
     id: 1,
     name: "Yoga",
@@ -102,12 +102,69 @@ function timeToMinutes(time) {
   return Number(parts[0]) * 60 + Number(parts[1]);
 }
 
+function minutesToTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+
+  return (
+    String(hours).padStart(2, "0") +
+    ":" +
+    String(mins).padStart(2, "0")
+  );
+}
+
 function App() {
   const [selectedDay, setSelectedDay] = useState("Vendredi");
+
+  const [activities, setActivities] = useState(
+    initialActivities
+  );
+
+  const [draggedActivity, setDraggedActivity] =
+    useState(null);
 
   const visibleActivities = activities.filter(
     (activity) => activity.day === selectedDay
   );
+
+  function handleDragStart(activityId) {
+    setDraggedActivity(activityId);
+  }
+
+  function handleDrop(zone, time) {
+    if (draggedActivity === null) {
+      return;
+    }
+
+    setActivities((currentActivities) =>
+      currentActivities.map((activity) => {
+
+        if (activity.id !== draggedActivity) {
+          return activity;
+        }
+
+        const duration =
+          timeToMinutes(activity.end) -
+          timeToMinutes(activity.start);
+
+        const newStart = timeToMinutes(time);
+        const newEnd = newStart + duration;
+
+        return {
+          ...activity,
+          zone: zone,
+          start: minutesToTime(newStart),
+          end: minutesToTime(newEnd),
+        };
+      })
+    );
+
+    setDraggedActivity(null);
+  }
+
+  function handleDragEnd() {
+    setDraggedActivity(null);
+  }
 
   return (
     <div className="min-h-screen bg-[#151619] text-[#ebebed]">
@@ -126,10 +183,15 @@ function App() {
               <h1 className="mt-1 text-2xl font-semibold">
                 Programmation
               </h1>
+
+              <p className="mt-1 text-xs text-[#8580d9]">
+                Glissez-déposez les activités pour les déplacer
+              </p>
             </div>
 
             {/* JOURS */}
             <div className="flex gap-2">
+
               {days.map((day) => (
                 <button
                   key={day}
@@ -145,6 +207,7 @@ function App() {
                   {day}
                 </button>
               ))}
+
             </div>
 
           </div>
@@ -163,7 +226,7 @@ function App() {
           }}
         >
 
-          {/* COIN SUPÉRIEUR GAUCHE */}
+          {/* COIN */}
           <div className="border-b border-r border-[#303137] bg-[#151619]" />
 
           {/* ZONES */}
@@ -172,6 +235,7 @@ function App() {
               key={zone}
               className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
             >
+
               <div
                 className="mx-auto mb-2 h-1 w-10 rounded-full"
                 style={{
@@ -182,10 +246,11 @@ function App() {
               <div className="text-sm font-semibold">
                 {zone}
               </div>
+
             </div>
           ))}
 
-          {/* LIGNES HORAIRES */}
+          {/* HEURES */}
           {times.map((time) => (
             <React.Fragment key={time}>
 
@@ -197,16 +262,28 @@ function App() {
               {/* ZONES */}
               {zones.map((zone) => {
 
-                const activitiesHere = visibleActivities.filter(
-                  (activity) =>
-                    activity.zone === zone &&
-                    activity.start === time
-                );
+                const activitiesHere =
+                  visibleActivities.filter(
+                    (activity) =>
+                      activity.zone === zone &&
+                      activity.start === time
+                  );
 
                 return (
                   <div
                     key={time + zone}
-                    className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                    }}
+                    onDrop={() => {
+                      handleDrop(zone, time);
+                    }}
+                    className={
+                      "relative h-14 border-b border-r border-[#303137] bg-[#151619] transition " +
+                      (draggedActivity !== null
+                        ? "hover:bg-[#25262b]"
+                        : "")
+                    }
                   >
 
                     {activitiesHere.map((activity) => {
@@ -215,12 +292,23 @@ function App() {
                         timeToMinutes(activity.end) -
                         timeToMinutes(activity.start);
 
-                      const height = (duration / 30) * 56 - 4;
+                      const height =
+                        (duration / 30) * 56 - 4;
 
                       return (
                         <div
                           key={activity.id}
-                          className="absolute left-1 right-1 top-1 z-10 rounded-md p-2 text-xs shadow-lg"
+                          draggable
+                          onDragStart={() =>
+                            handleDragStart(activity.id)
+                          }
+                          onDragEnd={handleDragEnd}
+                          className={
+                            "absolute left-1 right-1 top-1 z-10 cursor-grab rounded-md p-2 text-xs shadow-lg transition hover:brightness-110 active:cursor-grabbing " +
+                            (draggedActivity === activity.id
+                              ? "opacity-50"
+                              : "")
+                          }
                           style={{
                             height: `${height}px`,
                             backgroundColor:
@@ -228,6 +316,7 @@ function App() {
                             color: "#151619",
                           }}
                         >
+
                           <div className="font-semibold">
                             {activity.name}
                           </div>
@@ -235,6 +324,7 @@ function App() {
                           <div className="mt-1 text-[11px] opacity-75">
                             {activity.start} – {activity.end}
                           </div>
+
                         </div>
                       );
                     })}
