@@ -261,6 +261,78 @@ export default async function handler(req, res) {
       );
     }
 
+    async function getMondayColumnOptions() {
+      const query = `
+        query {
+          boards(ids: [${BOARD_ID}]) {
+            columns(ids: [
+              "${COLUMN_IDS.volet}",
+              "${COLUMN_IDS.mode}",
+              "${COLUMN_IDS.status}",
+              "${COLUMN_IDS.categorieCouleur}"
+            ]) {
+              id
+              title
+              type
+              settings
+            }
+          }
+        }
+      `;
+
+      const data =
+        await mondayRequest(query);
+
+      const columns =
+        data.data?.boards?.[0]
+          ?.columns || [];
+
+      return Object.fromEntries(
+        columns.map((column) => {
+          const settings =
+            column.settings || {};
+
+          const rawLabels =
+            Array.isArray(settings.labels)
+              ? settings.labels
+              : Object.entries(
+                  settings.labels || {}
+                ).map(([id, label]) => ({
+                  id,
+                  label,
+                }));
+
+          const options =
+            rawLabels
+              .map((option) => ({
+                id:
+                  option.id ??
+                  option.index ??
+                  option.label,
+                label:
+                  option.label ??
+                  option.name ??
+                  "",
+                color:
+                  option.color || "",
+              }))
+              .filter(
+                (option) =>
+                  option.label
+              );
+
+          return [
+            column.id,
+            {
+              title: column.title,
+              type: column.type,
+              options,
+            },
+          ];
+        })
+      );
+    }
+
     /*
      * ============================================================
      * RÉCUPÉRER UN ITEM
@@ -311,8 +383,13 @@ export default async function handler(req, res) {
      */
 
     if (req.method === "GET") {
-      const items =
-        await getAllMondayItems();
+      const [
+        items,
+        columnOptions,
+      ] = await Promise.all([
+        getAllMondayItems(),
+        getMondayColumnOptions(),
+      ]);
 
       return res.status(200).json({
         data: {
@@ -322,6 +399,7 @@ export default async function handler(req, res) {
               items_page: {
                 items,
               },
+              columnOptions,
             },
           ],
         },
