@@ -273,7 +273,13 @@ function App() {
       date: "",
       debut: "",
       fin: "",
+      volet: "",
       zone: "",
+      mode: "",
+      status: "",
+      affichage: "",
+      categorieCouleur: "",
+      notes: "",
     });
 
   const [createSaving, setCreateSaving] =
@@ -883,7 +889,13 @@ function App() {
       fin: minutesToTime(
         endMinutes
       ),
+      volet: "",
       zone: zone,
+      mode: "",
+      status: "",
+      affichage: "",
+      categorieCouleur: "",
+      notes: "",
     });
 
     setCreatingActivity(true);
@@ -1229,7 +1241,18 @@ function App() {
 
             endTime: newEnd,
 
+            jour:
+              days.find(
+                (day) => day.date === newDate
+              )?.label || "",
+            volet: createForm.volet,
             zone: newZone,
+            mode: createForm.mode,
+            status: createForm.status,
+            affichage: createForm.affichage,
+            categorieCouleur:
+              createForm.categorieCouleur,
+            notes: createForm.notes,
           }),
         });
 
@@ -2326,6 +2349,116 @@ function App() {
 
                 </select>
 
+              </div>
+
+
+              {/* AUTRES COLONNES MONDAY */}
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Volet
+                </label>
+                <input
+                  type="text"
+                  value={createForm.volet}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      volet: event.target.value,
+                    }))
+                  }
+                  placeholder="Libellé exact dans Monday"
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Mode
+                </label>
+                <input
+                  type="text"
+                  value={createForm.mode}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      mode: event.target.value,
+                    }))
+                  }
+                  placeholder="Libellé exact dans Monday"
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Statut
+                </label>
+                <input
+                  type="text"
+                  value={createForm.status}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      status: event.target.value,
+                    }))
+                  }
+                  placeholder="Libellé exact dans Monday"
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Affichage
+                </label>
+                <input
+                  type="text"
+                  value={createForm.affichage}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      affichage: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Catégorie couleur
+                </label>
+                <input
+                  type="text"
+                  value={createForm.categorieCouleur}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      categorieCouleur:
+                        event.target.value,
+                    }))
+                  }
+                  placeholder="Libellé exact dans Monday"
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Notes
+                </label>
+                <textarea
+                  rows={4}
+                  value={createForm.notes}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
+                  className="w-full resize-y rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                />
               </div>
 
               {/* ERREUR */}
