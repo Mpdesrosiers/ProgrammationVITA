@@ -574,7 +574,7 @@ function App() {
       end - start;
 
     return Math.max(
-      (duration / 30) * 42 - 4,
+      (duration / 30) * 42 - 6,
       34
     );
   }
