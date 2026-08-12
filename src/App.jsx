@@ -216,6 +216,9 @@ function App() {
   const [activities, setActivities] =
     useState([]);
 
+  const [mondayColumnOptions, setMondayColumnOptions] =
+    useState({});
+
   const [loading, setLoading] =
     useState(true);
 
@@ -317,9 +320,15 @@ function App() {
         );
       }
 
+      const board =
+        data.data?.boards?.[0];
+
       const items =
-        data.data?.boards?.[0]
-          ?.items_page?.items || [];
+        board?.items_page?.items || [];
+
+      setMondayColumnOptions(
+        board?.columnOptions || {}
+      );
 
       const formattedActivities =
         items
@@ -2358,8 +2367,7 @@ function App() {
                 <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
                   Volet
                 </label>
-                <input
-                  type="text"
+                <select
                   value={createForm.volet}
                   onChange={(event) =>
                     setCreateForm((current) => ({
@@ -2367,17 +2375,29 @@ function App() {
                       volet: event.target.value,
                     }))
                   }
-                  placeholder="Libellé exact dans Monday"
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
-                />
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+                  <option value="">
+                    Sélectionner…
+                  </option>
+                  {(mondayColumnOptions["dropdown_mm63ffn6"]?.options || []).map(
+                    (option) => (
+                      <option
+                        key={option.id}
+                        value={option.label}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
+                </select>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
                   Mode
                 </label>
-                <input
-                  type="text"
+                <select
                   value={createForm.mode}
                   onChange={(event) =>
                     setCreateForm((current) => ({
@@ -2385,17 +2405,29 @@ function App() {
                       mode: event.target.value,
                     }))
                   }
-                  placeholder="Libellé exact dans Monday"
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
-                />
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+                  <option value="">
+                    Sélectionner…
+                  </option>
+                  {(mondayColumnOptions["dropdown_mm63xxam"]?.options || []).map(
+                    (option) => (
+                      <option
+                        key={option.id}
+                        value={option.label}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
+                </select>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
                   Statut
                 </label>
-                <input
-                  type="text"
+                <select
                   value={createForm.status}
                   onChange={(event) =>
                     setCreateForm((current) => ({
@@ -2403,9 +2435,22 @@ function App() {
                       status: event.target.value,
                     }))
                   }
-                  placeholder="Libellé exact dans Monday"
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
-                />
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+                  <option value="">
+                    Sélectionner…
+                  </option>
+                  {(mondayColumnOptions["status"]?.options || []).map(
+                    (option) => (
+                      <option
+                        key={option.id}
+                        value={option.label}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
+                </select>
               </div>
 
               <div>
@@ -2429,19 +2474,30 @@ function App() {
                 <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
                   Catégorie couleur
                 </label>
-                <input
-                  type="text"
+                <select
                   value={createForm.categorieCouleur}
                   onChange={(event) =>
                     setCreateForm((current) => ({
                       ...current,
-                      categorieCouleur:
-                        event.target.value,
+                      categorieCouleur: event.target.value,
                     }))
                   }
-                  placeholder="Libellé exact dans Monday"
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none placeholder:text-[#606168] focus:border-[#8580d9]"
-                />
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+                  <option value="">
+                    Sélectionner…
+                  </option>
+                  {(mondayColumnOptions["color_mm63ahs6"]?.options || []).map(
+                    (option) => (
+                      <option
+                        key={option.id}
+                        value={option.label}
+                      >
+                        {option.label}
+                      </option>
+                    )
+                  )}
+                </select>
               </div>
 
               <div>
