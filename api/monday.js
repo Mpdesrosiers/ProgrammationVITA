@@ -80,19 +80,19 @@ export default async function handler(req, res) {
      * Dans l'application :
      * 09:00
      *
-     * Dans Monday :
-     * 10:00
+     * Dans Monday (UTC) :
+     * 13:00
      *
-     * On conserve donc ton système actuel de +1 heure.
+     * Monday affiche ensuite cette valeur UTC dans le fuseau local.
      */
 
-    function addOneHourToDateTime(date, time) {
+    function addFourHoursToDateTime(date, time) {
       const [hours, minutes] = time
         .split(":")
         .map(Number);
 
       let totalMinutes =
-        hours * 60 + minutes + 60;
+        hours * 60 + minutes + 240;
 
       let newDate = date;
 
@@ -392,13 +392,13 @@ export default async function handler(req, res) {
       }
 
       const mondayStart =
-        addOneHourToDateTime(
+        addFourHoursToDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        addOneHourToDateTime(
+        addFourHoursToDateTime(
           endDate,
           endTime
         );
@@ -677,13 +677,13 @@ export default async function handler(req, res) {
        */
 
       const mondayStart =
-        addOneHourToDateTime(
+        addFourHoursToDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        addOneHourToDateTime(
+        addFourHoursToDateTime(
           endDate,
           endTime
         );
