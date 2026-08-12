@@ -86,62 +86,45 @@ export default async function handler(req, res) {
      * On conserve donc ton système actuel de +1 heure.
      */
 
-    function toMondayUtcDateTime(date, time) {
-      const [year, month, day] = date
-        .split("-")
-        .map(Number);
+    function addOneHourToDateTime(date, time) {
       const [hours, minutes] = time
         .split(":")
         .map(Number);
 
-      const desiredUtc = Date.UTC(
-        year,
-        month - 1,
-        day,
-        hours,
-        minutes
-      );
+      let totalMinutes =
+        hours * 60 + minutes + 60;
 
-      let instant = desiredUtc;
+      let newDate = date;
 
-      // Trouve l'instant UTC correspondant à l'heure locale
-      // America/Toronto, en tenant compte automatiquement
-      // de l'heure normale et de l'heure d'été.
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const parts = new Intl.DateTimeFormat(
-          "en-CA",
-          {
-            timeZone: "America/Toronto",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hourCycle: "h23",
-          }
-        ).formatToParts(new Date(instant));
+      if (totalMinutes >= 1440) {
+        totalMinutes -= 1440;
 
-        const getPart = (type) =>
-          Number(parts.find(
-            (part) => part.type === type
-          )?.value);
-
-        const representedLocal = Date.UTC(
-          getPart("year"),
-          getPart("month") - 1,
-          getPart("day"),
-          getPart("hour"),
-          getPart("minute")
+        const dateObject = new Date(
+          `${date}T00:00:00`
         );
 
-        instant += desiredUtc - representedLocal;
+        dateObject.setDate(
+          dateObject.getDate() + 1
+        );
+
+        newDate =
+          dateObject
+            .toISOString()
+            .slice(0, 10);
       }
 
-      const result = new Date(instant);
+      const newHours = Math.floor(
+        totalMinutes / 60
+      );
+
+      const newMinutes =
+        totalMinutes % 60;
 
       return {
-        date: result.toISOString().slice(0, 10),
-        time: result.toISOString().slice(11, 19),
+        date: newDate,
+        time:
+          `${String(newHours).padStart(2, "0")}:` +
+          `${String(newMinutes).padStart(2, "0")}:00`,
       };
     }
 
@@ -391,13 +374,13 @@ export default async function handler(req, res) {
       }
 
       const mondayStart =
-        toMondayUtcDateTime(
+        addOneHourToDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        toMondayUtcDateTime(
+        addOneHourToDateTime(
           endDate,
           endTime
         );
@@ -612,13 +595,13 @@ export default async function handler(req, res) {
        */
 
       const mondayStart =
-        toMondayUtcDateTime(
+        addOneHourToDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        toMondayUtcDateTime(
+        addOneHourToDateTime(
           endDate,
           endTime
         );
