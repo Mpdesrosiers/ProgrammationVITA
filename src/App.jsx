@@ -579,6 +579,29 @@ function App() {
     );
   }
 
+  function getGroupTimeSlot(group) {
+    const start =
+      timeToMinutes(group.debut);
+
+    return minutesToTime(
+      Math.floor(start / 30) * 30
+    );
+  }
+
+  function getGroupTopOffset(group) {
+    const start =
+      timeToMinutes(group.debut);
+
+    const slotStart =
+      Math.floor(start / 30) * 30;
+
+    return (
+      ((start - slotStart) / 30) *
+        42 +
+      2
+    );
+  }
+
   /*
    * ================================
    * DRAG & DROP
@@ -1678,7 +1701,9 @@ function App() {
                             (group) =>
                               group.zone ===
                                 zone &&
-                              group.debut ===
+                              getGroupTimeSlot(
+                                group
+                              ) ===
                                 time
                           );
 
@@ -1813,7 +1838,7 @@ function App() {
                                       }
                                     }}
                                     className={
-                                      "absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
+                                      "absolute left-1 right-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
                                       (
                                         draggedGroup?.id ===
                                         group.id
@@ -1822,6 +1847,11 @@ function App() {
                                       )
                                     }
                                     style={{
+                                      top:
+                                        getGroupTopOffset(
+                                          group
+                                        ),
+
                                       height:
                                         getGroupHeight(
                                           group
