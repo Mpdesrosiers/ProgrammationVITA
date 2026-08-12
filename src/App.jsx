@@ -1188,6 +1188,90 @@ function App() {
     }
   }
 
+  async function handleDeleteActivity() {
+    if (
+      editingItem?.type !==
+      "activity"
+    ) {
+      return;
+    }
+
+    const activity =
+      editingItem.activity;
+
+    const confirmed =
+      window.confirm(
+        `Supprimer définitivement « ${activity.activite} » de Monday et du calendrier?`
+      );
+
+    if (!confirmed) return;
+
+    setEditSaving(true);
+    setEditError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/monday",
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              itemId: activity.id,
+            }),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        data.error
+      ) {
+        throw new Error(
+          (
+            Array.isArray(
+              data.details
+            )
+              ? data.details[0]
+                  ?.message
+              : data.details
+          ) ||
+            data.error ||
+            "Impossible de supprimer l'activité."
+        );
+      }
+
+      setActivities((current) =>
+        current.filter(
+          (item) =>
+            item.id !== activity.id
+        )
+      );
+
+      setEditingItem(null);
+
+      setSaveMessage(
+        "✓ Activité supprimée de Monday"
+      );
+
+      await loadActivities(true);
+    } catch (err) {
+      console.error(err);
+
+      setEditError(
+        err.message ||
+          "Une erreur est survenue pendant la suppression."
+      );
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   /*
    * ================================
    * CRÉATION D'UNE ACTIVITÉ
@@ -2084,7 +2168,27 @@ function App() {
 
             </div>
 
-            <div className="mt-7 flex justify-end gap-3">
+            <div className="mt-7 flex items-center justify-between gap-3">
+
+              <div>
+                {editingItem.type ===
+                  "activity" && (
+                  <button
+                    type="button"
+                    onClick={
+                      handleDeleteActivity
+                    }
+                    disabled={editSaving}
+                    className="rounded-lg border border-[#df2f4a] bg-[#24171a] px-5 py-2.5 text-sm font-semibold text-[#ff8b9a] transition hover:bg-[#351b20] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {editSaving
+                      ? "Traitement…"
+                      : "Supprimer l'activité"}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-3">
 
               <button
                 type="button"
@@ -2111,6 +2215,8 @@ function App() {
                   ? "Enregistrement…"
                   : "Enregistrer"}
               </button>
+
+              </div>
 
             </div>
 
