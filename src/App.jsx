@@ -58,13 +58,52 @@ const times = [
 ];
 
 const zoneColors = {
-  "Terrain synthétique": "#00c875",
-  Asphalte: "#df2f4a",
-  "Zone démo": "#007eb5",
-  "Zone Famille": "#9d50dd",
-  Kiosques: "#fdab3d",
-  Scène: "#8580d9",
-  "Tente VIP": "#7f7f86",
+  "Terrain synthétique": {
+    background: "#7B9CC7",
+    border: "#4F709F",
+  },
+
+  Asphalte: {
+    background: "#8EACD2",
+    border: "#6084B4",
+  },
+
+  "Zone démo": {
+    background: "#B8D0E8",
+    border: "#7F9FBE",
+  },
+
+  "Zone Famille": {
+    background: "#B7A2C9",
+    border: "#80668F",
+  },
+
+  Kiosques: {
+    background: "#D9A3B8",
+    border: "#A96F89",
+  },
+
+  Scène: {
+    background: "#C68EAA",
+    border: "#975B79",
+  },
+
+  "Tente VIP": {
+    background: "#D9AD7C",
+    border: "#A97C4E",
+  },
+};
+
+const specialCategoryColors = {
+  "Montage/Démontage": {
+    background: "#A8C9A5",
+    border: "#648C61",
+  },
+
+  "Arrivée/Départ": {
+    background: "#62956A",
+    border: "#3F6846",
+  },
 };
 
 const COLUMN_IDS = {
@@ -88,12 +127,6 @@ function getColumn(item, columnId) {
   return column?.text || "";
 }
 
-/*
- * On utilise le "text" de Monday pour la date.
- *
- * Le "value" de Monday peut contenir une date UTC
- * décalée au jour suivant.
- */
 function getDate(item) {
   const column = item.column_values?.find(
     (col) => col.id === COLUMN_IDS.debut
@@ -108,13 +141,6 @@ function getDate(item) {
   return match ? match[1] : "";
 }
 
-/*
- * Monday nous renvoie l'heure avec un décalage
- * d'une heure.
- *
- * On retire donc 1 heure pour retrouver
- * l'heure réelle de notre programmation.
- */
 function getTime(item, columnId) {
   const text = getColumn(item, columnId);
 
@@ -128,6 +154,11 @@ function getTime(item, columnId) {
     .split(":")
     .map(Number);
 
+  /*
+   * Monday nous renvoie une heure décalée d'une heure.
+   * On retire donc 1 heure pour retrouver
+   * l'heure affichée dans notre programmation.
+   */
   const totalMinutes =
     hours * 60 + minutes - 60;
 
@@ -160,6 +191,34 @@ function minutesToTime(totalMinutes) {
   )}:${String(minutes).padStart(2, "0")}`;
 }
 
+/*
+ * Détermine la couleur d'une activité.
+ *
+ * Montage/Démontage et Arrivée/Départ
+ * gardent toujours leur couleur spéciale.
+ *
+ * Toutes les autres activités utilisent
+ * la couleur de leur zone.
+ */
+function getActivityColor(activity) {
+  const category =
+    activity.categorieCouleur?.trim();
+
+  if (
+    category &&
+    specialCategoryColors[category]
+  ) {
+    return specialCategoryColors[category];
+  }
+
+  return (
+    zoneColors[activity.zone] || {
+      background: "#8580d9",
+      border: "#625EA8",
+    }
+  );
+}
+
 function App() {
   const [selectedDay, setSelectedDay] =
     useState("2026-09-18");
@@ -173,10 +232,6 @@ function App() {
   const [error, setError] =
     useState("");
 
-  /*
-   * On ne drag plus une activité individuelle.
-   * On drag un groupe.
-   */
   const [draggedGroup, setDraggedGroup] =
     useState(null);
 
@@ -308,20 +363,11 @@ function App() {
   /*
    * REGROUPEMENT
    *
-   * Les activités sont regroupées si elles ont :
-   *
-   * - la même journée
-   * - la même zone
-   * - le même début
-   * - la même fin
-   *
-   * Exemple :
-   *
-   * Naomi       20:00 → 21:00
-   * DJ          20:00 → 21:00
-   * Animation   20:00 → 21:00
-   *
-   * deviennent un seul groupe.
+   * Même journée
+   * + même zone
+   * + même heure de début
+   * + même heure de fin
+   * = un seul bloc.
    */
 
   const activityGroups =
@@ -358,7 +404,7 @@ function App() {
     }, [selectedActivities]);
 
   /*
-   * HAUTEUR DU BLOC
+   * HAUTEUR DES BLOCS
    *
    * 30 minutes = 56 px
    */
@@ -391,7 +437,7 @@ function App() {
    * DROP
    *
    * Toutes les activités du groupe
-   * changent de zone et d'heure ensemble.
+   * sont déplacées ensemble.
    */
 
   function handleDrop(
@@ -544,7 +590,7 @@ function App() {
 
             <>
 
-              {/* INFO */}
+              {/* INFORMATIONS */}
 
               <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
 
@@ -598,7 +644,7 @@ function App() {
                         backgroundColor:
                           zoneColors[
                             zone
-                          ],
+                          ].border,
                       }}
                     />
 
@@ -628,13 +674,6 @@ function App() {
 
                     {zones.map(
                       (zone) => {
-
-                        /*
-                         * On cherche les groupes
-                         * qui commencent exactement
-                         * à cette heure et dans
-                         * cette zone.
-                         */
 
                         const groupsHere =
                           activityGroups.filter(
@@ -667,94 +706,108 @@ function App() {
                           >
 
                             {groupsHere.map(
-                              (group) => (
+                              (group) => {
 
-                                <div
-                                  key={
-                                    group.id
-                                  }
-                                  draggable
-                                  onDragStart={() =>
-                                    handleDragStart(
-                                      group
-                                    )
-                                  }
-                                  className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 border-[#151619] p-2 text-xs font-semibold text-white shadow-lg active:cursor-grabbing"
-                                  style={{
-                                    height:
-                                      getGroupHeight(
+                                /*
+                                 * La couleur est basée
+                                 * sur la catégorie spéciale
+                                 * ou sur la zone.
+                                 */
+
+                                const groupColor =
+                                  getActivityColor(
+                                    group
+                                      .activities[0]
+                                  );
+
+                                return (
+
+                                  <div
+                                    key={
+                                      group.id
+                                    }
+                                    draggable
+                                    onDragStart={() =>
+                                      handleDragStart(
                                         group
-                                      ),
-                                    backgroundColor:
-                                      zoneColors[
-                                        group.zone
-                                      ] ||
-                                      "#8580d9",
-                                  }}
-                                  title={
-                                    group.activities
-                                      .map(
+                                      )
+                                    }
+                                    className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing"
+                                    style={{
+                                      height:
+                                        getGroupHeight(
+                                          group
+                                        ),
+                                      backgroundColor:
+                                        groupColor.background,
+                                      borderColor:
+                                        groupColor.border,
+                                    }}
+                                    title={
+                                      group.activities
+                                        .map(
+                                          (
+                                            activity
+                                          ) =>
+                                            activity.activite
+                                        )
+                                        .join(
+                                          "\n"
+                                        )
+                                    }
+                                  >
+
+                                    {/* ACTIVITÉS */}
+
+                                    <div className="space-y-0.5">
+
+                                      {group.activities.map(
                                         (
                                           activity
-                                        ) =>
-                                          activity.activite
-                                      )
-                                      .join(
-                                        "\n"
-                                      )
-                                  }
-                                >
+                                        ) => (
 
-                                  {/* LISTE DES ACTIVITÉS */}
-
-                                  <div className="space-y-0.5">
-
-                                    {group.activities.map(
-                                      (
-                                        activity
-                                      ) => (
-
-                                        <div
-                                          key={
-                                            activity.id
-                                          }
-                                          className="flex items-start gap-1"
-                                        >
-
-                                          <span className="opacity-70">
-                                            •
-                                          </span>
-
-                                          <span>
-                                            {
-                                              activity.activite
+                                          <div
+                                            key={
+                                              activity.id
                                             }
-                                          </span>
+                                            className="flex items-start gap-1"
+                                          >
 
-                                        </div>
+                                            <span className="opacity-60">
+                                              •
+                                            </span>
 
-                                      )
-                                    )}
+                                            <span>
+                                              {
+                                                activity.activite
+                                              }
+                                            </span>
+
+                                          </div>
+
+                                        )
+                                      )}
+
+                                    </div>
+
+                                    {/* HEURES */}
+
+                                    <div className="mt-1 text-[10px] font-medium opacity-70">
+
+                                      {
+                                        group.debut
+                                      }{" "}
+                                      –{" "}
+                                      {
+                                        group.fin
+                                      }
+
+                                    </div>
 
                                   </div>
 
-                                  {/* HEURES */}
-
-                                  <div className="mt-1 text-[10px] font-normal opacity-80">
-
-                                    {
-                                      group.debut
-                                    }{" "}
-                                    –{" "}
-                                    {
-                                      group.fin
-                                    }
-
-                                  </div>
-
-                                </div>
-
-                              )
+                                );
+                              }
                             )}
 
                           </div>
