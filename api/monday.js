@@ -238,6 +238,7 @@ export default async function handler(req, res) {
               items {
                 id
                 name
+                updated_at
 
                 column_values {
                   id
@@ -342,6 +343,7 @@ export default async function handler(req, res) {
           items(ids: [${Number(itemId)}]) {
             id
             name
+            updated_at
             column_values {
               id
               text
@@ -743,6 +745,7 @@ export default async function handler(req, res) {
         endDate,
         endTime,
         zone,
+        expectedUpdatedAt,
       } = req.body || {};
 
       if (!itemId) {
@@ -805,6 +808,19 @@ export default async function handler(req, res) {
         await getMondayItem(
           itemId
         );
+
+      if (
+        expectedUpdatedAt &&
+        existingItem.updated_at !==
+          expectedUpdatedAt
+      ) {
+        return res.status(409).json({
+          error:
+            "Cette activité a été modifiée par une autre personne. Le calendrier a été actualisé; veuillez refaire votre changement.",
+          conflict: true,
+          mondayItem: existingItem,
+        });
+      }
 
       if (!existingItem) {
         return res.status(404).json({
