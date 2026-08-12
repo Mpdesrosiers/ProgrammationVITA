@@ -284,8 +284,8 @@ function App() {
       }
 
       const items =
-        data.data?.boards?.[0]
-          ?.items_page?.items || [];
+        data.data?.boards?.[0]?.items_page
+          ?.items || [];
 
       const formattedActivities =
         items
@@ -510,12 +510,6 @@ function App() {
       return Object.values(groups);
     }, [selectedActivities]);
 
-  /*
-   * ------------------------------------------------
-   * HAUTEUR DES BLOCS
-   * ------------------------------------------------
-   */
-
   function getGroupHeight(group) {
     const start =
       timeToMinutes(group.debut);
@@ -526,9 +520,12 @@ function App() {
     const duration =
       end - start;
 
+    /*
+     * 45 px par tranche de 30 minutes.
+     */
     return Math.max(
-      (duration / 30) * 50 - 4,
-      38
+      (duration / 30) * 45 - 4,
+      34
     );
   }
 
@@ -589,7 +586,7 @@ function App() {
       clientY - rect.top;
 
     const half =
-      relativeY >= 25
+      relativeY >= 22.5
         ? 30
         : 0;
 
@@ -1242,7 +1239,7 @@ function App() {
                     key={time}
                   >
 
-                    <div className="flex h-[50px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
+                    <div className="flex h-[45px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
                       {time}
                     </div>
 
@@ -1284,7 +1281,7 @@ function App() {
                             onDrop={
                               handleDrop
                             }
-                            className="relative h-[50px] border-b border-r border-[#303137] bg-[#151619]"
+                            className="relative h-[45px] border-b border-r border-[#303137] bg-[#151619]"
                           >
 
                             {isPreview && (
@@ -1297,7 +1294,7 @@ function App() {
                                       ? getGroupHeight(
                                           draggedGroup
                                         )
-                                      : 46,
+                                      : 40,
                                 }}
                               >
 
@@ -1468,18 +1465,16 @@ function App() {
           onMouseDown={(
             event
           ) => {
-
             if (
               event.target ===
               event.currentTarget
             ) {
               closeEditor();
             }
-
           }}
         >
 
-          <div className="w-full max-w-lg rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
 
             <div className="mb-6 flex items-start justify-between">
 
@@ -1518,87 +1513,21 @@ function App() {
 
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto pr-1">
+            <div className="space-y-5">
 
-              <div className="space-y-5">
-
-                {editingItem.type ===
-                  "activity" && (
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                      Activité
-                    </label>
-
-                    <input
-                      type="text"
-                      value={
-                        editForm.activite
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            activite:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none transition focus:border-[#8580d9]"
-                    />
-
-                  </div>
-
-                )}
-
-                {editingItem.type ===
-                  "group" && (
-
-                  <div className="rounded-lg border border-[#303137] bg-[#151619] p-3">
-
-                    <div className="mb-2 text-xs font-medium text-[#85858c]">
-                      ACTIVITÉS DU GROUPE
-                    </div>
-
-                    <div className="max-h-40 space-y-1 overflow-y-auto pr-2">
-
-                      {editingItem.group.activities.map(
-                        (activity) => (
-
-                          <div
-                            key={
-                              activity.id
-                            }
-                            className="text-sm text-[#e4e4e7]"
-                          >
-                            •{" "}
-                            {
-                              activity.activite
-                            }
-                          </div>
-
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-
-                )}
+              {editingItem.type ===
+                "activity" && (
 
                 <div>
 
                   <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                    Journée
+                    Activité
                   </label>
 
-                  <select
+                  <input
+                    type="text"
                     value={
-                      editForm.date
+                      editForm.activite
                     }
                     onChange={(
                       event
@@ -1606,175 +1535,237 @@ function App() {
                       setEditForm(
                         (current) => ({
                           ...current,
-                          date:
+                          activite:
                             event.target
                               .value,
                         })
                       )
                     }
-                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                  >
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none transition focus:border-[#8580d9]"
+                  />
 
-                    {days.map(
-                      (day) => (
+                </div>
 
-                        <option
+              )}
+
+              {editingItem.type ===
+                "group" && (
+
+                <div className="rounded-lg border border-[#303137] bg-[#151619] p-3">
+
+                  <div className="mb-2 text-xs font-medium text-[#85858c]">
+                    ACTIVITÉS DU GROUPE
+                  </div>
+
+                  <div className="max-h-40 space-y-1 overflow-y-auto pr-2">
+
+                    {editingItem.group.activities.map(
+                      (activity) => (
+
+                        <div
                           key={
-                            day.date
+                            activity.id
                           }
-                          value={
-                            day.date
-                          }
+                          className="text-sm text-[#e4e4e7]"
                         >
-                          {day.label}
-                        </option>
+                          •{" "}
+                          {
+                            activity.activite
+                          }
+                        </div>
 
                       )
                     )}
 
-                  </select>
-
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                      Heure de début
-                    </label>
-
-                    <select
-                      value={
-                        editForm.debut
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            debut:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                    >
-
-                      {times.map(
-                        (time) => (
-
-                          <option
-                            key={time}
-                            value={time}
-                          >
-                            {time}
-                          </option>
-
-                        )
-                      )}
-
-                    </select>
-
-                  </div>
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                      Heure de fin
-                    </label>
-
-                    <select
-                      value={
-                        editForm.fin
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditForm(
-                          (current) => ({
-                            ...current,
-                            fin:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                    >
-
-                      {times.map(
-                        (time) => (
-
-                          <option
-                            key={time}
-                            value={time}
-                          >
-                            {time}
-                          </option>
-
-                        )
-                      )}
-
-                    </select>
-
                   </div>
 
                 </div>
 
-                <div>
+              )}
 
-                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                    Zone
-                  </label>
+              <div>
 
-                  <select
-                    value={
-                      editForm.zone
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setEditForm(
-                        (current) => ({
-                          ...current,
-                          zone:
-                            event.target
-                              .value,
-                        })
-                      )
-                    }
-                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                  >
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Journée
+                </label>
 
-                    {zones.map(
-                      (zone) => (
+                <select
+                  value={
+                    editForm.date
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setEditForm(
+                      (current) => ({
+                        ...current,
+                        date:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
 
-                        <option
-                          key={zone}
-                          value={zone}
-                        >
-                          {zone}
-                        </option>
+                  {days.map(
+                    (day) => (
 
-                      )
-                    )}
+                      <option
+                        key={
+                          day.date
+                        }
+                        value={
+                          day.date
+                        }
+                      >
+                        {day.label}
+                      </option>
 
-                  </select>
+                    )
+                  )}
 
-                </div>
-
-                {editError && (
-
-                  <div className="rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
-                    {editError}
-                  </div>
-
-                )}
+                </select>
 
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                    Heure de début
+                  </label>
+
+                  <select
+                    value={
+                      editForm.debut
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setEditForm(
+                        (current) => ({
+                          ...current,
+                          debut:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                  >
+
+                    {times.map(
+                      (time) => (
+
+                        <option
+                          key={time}
+                          value={time}
+                        >
+                          {time}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                    Heure de fin
+                  </label>
+
+                  <select
+                    value={
+                      editForm.fin
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setEditForm(
+                        (current) => ({
+                          ...current,
+                          fin:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                  >
+
+                    {times.map(
+                      (time) => (
+
+                        <option
+                          key={time}
+                          value={time}
+                        >
+                          {time}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+              </div>
+
+              <div>
+
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Zone
+                </label>
+
+                <select
+                  value={
+                    editForm.zone
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setEditForm(
+                      (current) => ({
+                        ...current,
+                        zone:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+
+                  {zones.map(
+                    (zone) => (
+
+                      <option
+                        key={zone}
+                        value={zone}
+                      >
+                        {zone}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              {editError && (
+
+                <div className="rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
+                  {editError}
+                </div>
+
+              )}
 
             </div>
 
