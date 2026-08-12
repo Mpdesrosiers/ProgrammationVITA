@@ -466,58 +466,71 @@ function App() {
 
     try {
       /*
-       * On sauvegarde chaque activité
-       * du groupe dans Monday.
+       * OPTIMISATION :
+       *
+       * Avant, les activités étaient envoyées
+       * une par une avec await dans une boucle.
+       *
+       * Maintenant, toutes les requêtes partent
+       * en même temps avec Promise.all().
        */
-      for (
-        const activity of
-          draggedGroup.activities
-      ) {
-        const response = await fetch(
-          "/api/monday",
-          {
-            method: "PUT",
+      const saveRequests =
+        draggedGroup.activities.map(
+          async (activity) => {
+            const response =
+              await fetch("/api/monday", {
+                method: "PUT",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-            body: JSON.stringify({
-              itemId: activity.id,
+                body: JSON.stringify({
+                  itemId: activity.id,
 
-              startDate:
-                activity.date,
+                  startDate:
+                    activity.date,
 
-              startTime:
-                newStartTime,
+                  startTime:
+                    newStartTime,
 
-              endDate:
-                activity.date,
+                  endDate:
+                    activity.date,
 
-              endTime:
-                newEndTime,
+                  endTime:
+                    newEndTime,
 
-              zone: newZone,
-            }),
+                  zone: newZone,
+                }),
+              });
+
+            const data =
+              await response.json();
+
+            if (
+              !response.ok ||
+              data.error
+            ) {
+              throw new Error(
+                data.details?.[0]
+                  ?.message ||
+                  data.error ||
+                  "Erreur lors de la sauvegarde dans Monday."
+              );
+            }
+
+            return data;
           }
         );
 
-        const data =
-          await response.json();
-
-        if (
-          !response.ok ||
-          data.error
-        ) {
-          throw new Error(
-            data.details?.[0]
-              ?.message ||
-              data.error ||
-              "Erreur lors de la sauvegarde dans Monday."
-          );
-        }
-      }
+      /*
+       * Toutes les activités sont sauvegardées
+       * simultanément.
+       */
+      await Promise.all(
+        saveRequests
+      );
 
       setSaveMessage(
         "✓ Modification enregistrée dans Monday"
@@ -541,7 +554,10 @@ function App() {
         const data =
           await response.json();
 
-        if (response.ok && !data.error) {
+        if (
+          response.ok &&
+          !data.error
+        ) {
           const items =
             data.data?.boards?.[0]
               ?.items_page?.items || [];
