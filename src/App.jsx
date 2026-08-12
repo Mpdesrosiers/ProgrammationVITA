@@ -254,6 +254,27 @@ function App() {
   const [saveMessage, setSaveMessage] =
     useState("");
 
+  const [lastSyncedAt, setLastSyncedAt] =
+    useState(null);
+
+  const [searchTerm, setSearchTerm] =
+    useState("");
+
+  const [zoneFilter, setZoneFilter] =
+    useState("");
+
+  const [voletFilter, setVoletFilter] =
+    useState("");
+
+  const [statusFilter, setStatusFilter] =
+    useState("");
+
+  const [history, setHistory] =
+    useState([]);
+
+  const [undoing, setUndoing] =
+    useState(false);
+
   /*
    * ================================
    * POPUP MODIFICATION
@@ -413,6 +434,8 @@ function App() {
         formattedActivities
       );
 
+      setLastSyncedAt(new Date());
+
       setError("");
     } catch (err) {
       console.error(err);
@@ -570,14 +593,122 @@ function App() {
 
   const selectedActivities =
     useMemo(() => {
+      const normalizedSearch =
+        searchTerm.trim().toLowerCase();
+
       return activities.filter(
         (activity) =>
-          activity.date === selectedDay
+          activity.date === selectedDay &&
+          (
+            !normalizedSearch ||
+            activity.activite
+              .toLowerCase()
+              .includes(normalizedSearch) ||
+            String(activity.mondayId)
+              .toLowerCase()
+              .includes(normalizedSearch) ||
+            String(activity.id)
+              .includes(normalizedSearch)
+          ) &&
+          (!zoneFilter ||
+            activity.zone === zoneFilter) &&
+          (!voletFilter ||
+            activity.volet === voletFilter) &&
+          (!statusFilter ||
+            activity.status === statusFilter)
       );
     }, [
       activities,
       selectedDay,
+      searchTerm,
+      zoneFilter,
+      voletFilter,
+      statusFilter,
     ]);
+
+  function addHistory(entry) {
+    setHistory((current) =>
+      [
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          createdAt: new Date(),
+          ...entry,
+        },
+        ...current,
+      ].slice(0, 10)
+    );
+  }
+
+  async function handleUndo() {
+    const entry = history.find(
+      (item) => item.before?.length
+    );
+
+    if (!entry || undoing) return;
+
+    setUndoing(true);
+    setSaveMessage("Annulation…");
+
+    try {
+      await Promise.all(
+        entry.before.map(async (previous) => {
+          const current = activities.find(
+            (item) => item.id === previous.id
+          );
+
+          const response = await fetch(
+            "/api/monday",
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                itemId: previous.id,
+                expectedUpdatedAt:
+                  current?.updatedAt,
+                activite:
+                  previous.activite,
+                startDate: previous.date,
+                startTime: previous.debut,
+                endDate: previous.date,
+                endTime: previous.fin,
+                zone: previous.zone,
+              }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (!response.ok || data.error) {
+            throw new Error(
+              data.error ||
+                "Impossible d'annuler la modification."
+            );
+          }
+        })
+      );
+
+      setHistory((current) =>
+        current.filter(
+          (item) => item.id !== entry.id
+        )
+      );
+
+      await loadActivities(true);
+      setSaveMessage(
+        "✓ Dernière modification annulée"
+      );
+    } catch (err) {
+      await loadActivities(true);
+      setSaveMessage(
+        `⚠️ ${err.message}`
+      );
+    } finally {
+      setUndoing(false);
+    }
+  }
 
   /*
    * ================================
@@ -882,6 +1013,14 @@ function App() {
         saveRequests
       );
 
+      addHistory({
+        label: `Déplacement de ${draggedGroup.activities.length} activité${draggedGroup.activities.length > 1 ? "s" : ""}`,
+        before:
+          draggedGroup.activities.map(
+            (activity) => ({ ...activity })
+          ),
+      });
+
       await loadActivities(true);
 
       setSaveMessage(
@@ -1137,6 +1276,11 @@ function App() {
               : item
           )
         );
+
+        addHistory({
+          label: `Modification de « ${activity.activite} »`,
+          before: [{ ...activity }],
+        });
       }
 
       /*
@@ -1237,6 +1381,13 @@ function App() {
               : item
           )
         );
+
+        addHistory({
+          label: `Modification d'un groupe de ${group.activities.length} activités`,
+          before: group.activities.map(
+            (activity) => ({ ...activity })
+          ),
+        });
       }
 
       setEditingItem(null);
@@ -1332,6 +1483,10 @@ function App() {
       setSaveMessage(
         "✓ Activité supprimée de Monday"
       );
+
+      addHistory({
+        label: `Suppression de « ${activity.activite} »`,
+      });
 
       await loadActivities(true);
     } catch (err) {
@@ -1470,6 +1625,10 @@ function App() {
         "✓ Activité ajoutée dans Monday"
       );
 
+      addHistory({
+        label: `Ajout de « ${newName} »`,
+      });
+
       await loadActivities(true);
     } catch (err) {
       console.error(err);
@@ -1571,6 +1730,118 @@ function App() {
         </div>
 
       </header>
+
+      <section className="border-b border-[#303137] bg-[#18191d] px-6 py-3">
+        <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) =>
+              setSearchTerm(event.target.value)
+            }
+            placeholder="Rechercher une activité ou un ID…"
+            className="min-w-[260px] flex-1 rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm text-white outline-none focus:border-[#8580d9]"
+          />
+
+          <select
+            value={zoneFilter}
+            onChange={(event) =>
+              setZoneFilter(event.target.value)
+            }
+            className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm text-white"
+          >
+            <option value="">Toutes les zones</option>
+            {zones.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={voletFilter}
+            onChange={(event) =>
+              setVoletFilter(event.target.value)
+            }
+            className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm text-white"
+          >
+            <option value="">Tous les volets</option>
+            {[...new Set(activities.map((item) => item.volet).filter(Boolean))]
+              .sort()
+              .map((volet) => (
+                <option key={volet} value={volet}>
+                  {volet}
+                </option>
+              ))}
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value)
+            }
+            className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm text-white"
+          >
+            <option value="">Tous les statuts</option>
+            {[...new Set(activities.map((item) => item.status).filter(Boolean))]
+              .sort()
+              .map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => loadActivities(true)}
+            className="rounded-lg border border-[#3a3b42] bg-[#303137] px-3 py-2 text-sm text-white hover:bg-[#404148]"
+          >
+            Actualiser
+          </button>
+
+          <span className="text-xs text-[#8fba91]">
+            ● Synchronisé{lastSyncedAt
+              ? ` à ${lastSyncedAt.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+              : "…"}
+          </span>
+
+          <details className="relative">
+            <summary className="cursor-pointer rounded-lg border border-[#3a3b42] bg-[#303137] px-3 py-2 text-sm text-white hover:bg-[#404148]">
+              Historique ({history.length})
+            </summary>
+            <div className="absolute right-0 z-[1200] mt-2 w-[360px] rounded-lg border border-[#3a3b42] bg-[#202126] p-3 shadow-2xl">
+              {history.length === 0 ? (
+                <div className="text-sm text-[#a1a1a8]">
+                  Aucune modification dans cette session.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {history.map((entry) => (
+                    <div key={entry.id} className="border-b border-[#303137] pb-2 text-sm last:border-0">
+                      <div>{entry.label}</div>
+                      <div className="text-xs text-[#a1a1a8]">
+                        {entry.createdAt.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={undoing || !history.some((entry) => entry.before?.length)}
+                className="mt-3 w-full rounded-md bg-[#8580d9] px-3 py-2 text-sm font-semibold text-[#151619] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {undoing ? "Annulation…" : "Annuler la dernière modification"}
+              </button>
+              <div className="mt-2 text-[11px] text-[#a1a1a8]">
+                L'historique est conservé pour cet onglet seulement.
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
 
       {/* CALENDRIER */}
 
