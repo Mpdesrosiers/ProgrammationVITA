@@ -74,7 +74,7 @@ export default async function handler(req, res) {
 
     /*
      * ============================================================
-     * HEURES APP → MONDAY SANS DÉCALAGE
+     * CONVERSION APP → MONDAY
      * ============================================================
      *
      * Dans l'application :
@@ -86,10 +86,45 @@ export default async function handler(req, res) {
      * On conserve donc ton système actuel de +1 heure.
      */
 
-    function toMondayDateTime(date, time) {
+    function addOneHourToDateTime(date, time) {
+      const [hours, minutes] = time
+        .split(":")
+        .map(Number);
+
+      let totalMinutes =
+        hours * 60 + minutes + 60;
+
+      let newDate = date;
+
+      if (totalMinutes >= 1440) {
+        totalMinutes -= 1440;
+
+        const dateObject = new Date(
+          `${date}T00:00:00`
+        );
+
+        dateObject.setDate(
+          dateObject.getDate() + 1
+        );
+
+        newDate =
+          dateObject
+            .toISOString()
+            .slice(0, 10);
+      }
+
+      const newHours = Math.floor(
+        totalMinutes / 60
+      );
+
+      const newMinutes =
+        totalMinutes % 60;
+
       return {
-        date,
-        time: `${time}:00`,
+        date: newDate,
+        time:
+          `${String(newHours).padStart(2, "0")}:` +
+          `${String(newMinutes).padStart(2, "0")}:00`,
       };
     }
 
@@ -339,13 +374,13 @@ export default async function handler(req, res) {
       }
 
       const mondayStart =
-        toMondayDateTime(
+        addOneHourToDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        toMondayDateTime(
+        addOneHourToDateTime(
           endDate,
           endTime
         );
@@ -560,13 +595,13 @@ export default async function handler(req, res) {
        */
 
       const mondayStart =
-        toMondayDateTime(
+        addOneHourToDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        toMondayDateTime(
+        addOneHourToDateTime(
           endDate,
           endTime
         );
