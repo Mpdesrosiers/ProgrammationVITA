@@ -434,7 +434,7 @@ function App() {
     /*
      * Chaque ligne fait 56 px.
      * On arrondit au créneau de 30 minutes
-     * le plus proche.
+     * correspondant à la position de la souris.
      */
     const slotIndex =
       Math.floor(y / 56);
@@ -916,9 +916,18 @@ function App() {
                             className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
                           >
 
+                            {/* 
+                              APERÇU DU DROP
+                              
+                              z-50 = toujours par-dessus
+                              les blocs existants.
+                              pointer-events-none =
+                              la souris continue de
+                              contrôler la cellule située dessous.
+                            */}
                             {isPreview && (
                               <div
-                                className="pointer-events-none absolute left-1 right-1 top-1 z-10 rounded-md border-2 border-dashed border-white/70 bg-white/10"
+                                className="pointer-events-none absolute left-1 right-1 top-1 z-50 rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
                                 style={{
                                   height:
                                     draggedGroup
@@ -928,9 +937,11 @@ function App() {
                                       : 52,
                                 }}
                               >
-                                <div className="px-2 py-1 text-[10px] font-semibold text-white/80">
+
+                                <div className="px-2 py-1 text-[10px] font-semibold text-white">
                                   {dragPreview.time}
                                 </div>
+
                               </div>
                             )}
 
