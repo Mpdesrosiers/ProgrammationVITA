@@ -314,7 +314,11 @@ function App() {
         data.error
       ) {
         throw new Error(
-          data.details?.[0]?.message ||
+          (
+              Array.isArray(data.details)
+                ? data.details[0]?.message
+                : data.details
+            ) ||
             data.error ||
             "Impossible de charger les données."
         );
@@ -774,8 +778,11 @@ function App() {
               data.error
             ) {
               throw new Error(
-                data.details?.[0]
-                  ?.message ||
+                (
+                  Array.isArray(data.details)
+                    ? data.details[0]?.message
+                    : data.details
+                ) ||
                   data.error ||
                   "Erreur lors de la sauvegarde dans Monday."
               );
@@ -1273,7 +1280,11 @@ function App() {
         data.error
       ) {
         throw new Error(
-          data.details?.[0]?.message ||
+          (
+              Array.isArray(data.details)
+                ? data.details[0]?.message
+                : data.details
+            ) ||
             data.error ||
             "Impossible de créer l'activité dans Monday."
         );
