@@ -31,12 +31,12 @@ export default async function handler(req, res) {
     };
 
     /*
-     * Monday affiche/retourne les heures avec un décalage.
+     * Monday affiche/retourne les heures avec un décalage d'une heure.
      *
-     * Dans notre application :
+     * Application :
      * 05:30 = 05:30
      *
-     * Dans Monday :
+     * Monday :
      * 06:30 = 05:30 dans notre programmation
      *
      * Donc lorsqu'on ENVOIE une heure depuis l'application
@@ -51,15 +51,22 @@ export default async function handler(req, res) {
         `${date}T${String(hours).padStart(
           2,
           "0"
-        )}:${String(minutes).padStart(2, "0")}:00`
+        )}:${String(minutes).padStart(
+          2,
+          "0"
+        )}:00`
       );
 
-      result.setHours(result.getHours() + 1);
+      result.setHours(
+        result.getHours() + 1
+      );
 
       const year = result.getFullYear();
+
       const month = String(
         result.getMonth() + 1
       ).padStart(2, "0");
+
       const day = String(
         result.getDate()
       ).padStart(2, "0");
@@ -112,7 +119,8 @@ export default async function handler(req, res) {
           method: "POST",
 
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
             Authorization:
               process.env.MONDAY_API_TOKEN,
           },
@@ -123,16 +131,293 @@ export default async function handler(req, res) {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok || data.errors) {
         return res.status(500).json({
           error: "Erreur Monday",
-          details: data.errors || data,
+          details:
+            data.errors || data,
         });
       }
 
       return res.status(200).json(data);
+    }
+
+    /*
+     * ================================
+     * POST
+     * ================================
+     *
+     * Crée une nouvelle activité
+     * dans Monday.
+     *
+     * Utilisé lorsque l'utilisateur :
+     * - clique sur "Ajouter une activité"
+     * - clique sur un créneau vide
+     */
+    if (req.method === "POST") {
+      const {
+        activite,
+        date,
+        startTime,
+        endTime,
+        zone,
+        volet,
+        mode,
+        categorieCouleur,
+        notes,
+      } = req.body || {};
+
+      if (!activite?.trim()) {
+        return res.status(400).json({
+          error:
+            "Le nom de l'activité est obligatoire.",
+        });
+      }
+
+      if (!date) {
+        return res.status(400).json({
+          error:
+            "La journée est obligatoire.",
+        });
+      }
+
+      if (!startTime) {
+        return res.status(400).json({
+          error:
+            "L'heure de début est obligatoire.",
+        });
+      }
+
+      if (!endTime) {
+        return res.status(400).json({
+          error:
+            "L'heure de fin est obligatoire.",
+        });
+      }
+
+      if (!zone) {
+        return res.status(400).json({
+          error:
+            "La zone est obligatoire.",
+        });
+      }
+
+      const zoneIndex =
+        ZONE_INDEX[zone];
+
+      if (!zoneIndex) {
+        return res.status(400).json({
+          error:
+            `Zone inconnue : ${zone}`,
+        });
+      }
+
+      /*
+       * Vérification de l'ordre des heures.
+       */
+      const startMinutes =
+        startTime
+          .split(":")
+          .map(Number)[0] *
+          60 +
+        startTime
+          .split(":")
+          .map(Number)[1];
+
+      const endMinutes =
+        endTime
+          .split(":")
+          .map(Number)[0] *
+          60 +
+        endTime
+          .split(":")
+          .map(Number)[1];
+
+      if (endMinutes <= startMinutes) {
+        return res.status(400).json({
+          error:
+            "L'heure de fin doit être après l'heure de début.",
+        });
+      }
+
+      /*
+       * Conversion des heures vers Monday.
+       */
+      const mondayStart =
+        addOneHourToDateTime(
+          date,
+          startTime
+        );
+
+      const mondayEnd =
+        addOneHourToDateTime(
+          date,
+          endTime
+        );
+
+      /*
+       * Préparation des colonnes.
+       */
+      const columnValues = {
+        [COLUMN_IDS.activite]:
+          activite.trim(),
+
+        [COLUMN_IDS.debut]: {
+          date: mondayStart.date,
+          time: mondayStart.time,
+        },
+
+        [COLUMN_IDS.fin]: {
+          date: mondayEnd.date,
+          time: mondayEnd.time,
+        },
+
+        [COLUMN_IDS.zone]: {
+          index: zoneIndex,
+        },
+      };
+
+      /*
+       * Ajouter les champs facultatifs
+       * seulement lorsqu'ils sont fournis.
+       */
+
+      if (volet) {
+        columnValues[
+          COLUMN_IDS.volet
+        ] = {
+          label: volet,
+        };
+      }
+
+      if (mode) {
+        columnValues[
+          COLUMN_IDS.mode
+        ] = {
+          label: mode,
+        };
+      }
+
+      if (categorieCouleur) {
+        columnValues[
+          COLUMN_IDS.categorieCouleur
+        ] = {
+          label: categorieCouleur,
+        };
+      }
+
+      if (notes) {
+        columnValues[
+          COLUMN_IDS.notes
+        ] = notes;
+      }
+
+      /*
+       * Mutation Monday.
+       *
+       * create_item crée une nouvelle activité
+       * avec les colonnes demandées.
+       */
+      const mutation = `
+        mutation {
+          create_item(
+            board_id: ${Number(
+              BOARD_ID
+            )},
+            item_name: ${JSON.stringify(
+              activite.trim()
+            )},
+            column_values: ${JSON.stringify(
+              JSON.stringify(
+                columnValues
+              )
+            )}
+          ) {
+            id
+            name
+          }
+        }
+      `;
+
+      const response = await fetch(
+        "https://api.monday.com/v2",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              process.env.MONDAY_API_TOKEN,
+          },
+
+          body: JSON.stringify({
+            query: mutation,
+          }),
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok || data.errors) {
+        console.error(
+          "Erreur création Monday:",
+          data
+        );
+
+        return res.status(500).json({
+          error:
+            "Erreur lors de la création de l'activité dans Monday.",
+          details:
+            data.errors || data,
+        });
+      }
+
+      const createdItem =
+        data.data?.create_item;
+
+      return res.status(200).json({
+        success: true,
+
+        itemId:
+          createdItem?.id,
+
+        itemName:
+          createdItem?.name,
+
+        activite:
+          activite.trim(),
+
+        date,
+
+        startTime,
+
+        endTime,
+
+        zone,
+
+        volet:
+          volet || "",
+
+        mode:
+          mode || "",
+
+        categorieCouleur:
+          categorieCouleur || "",
+
+        notes:
+          notes || "",
+
+        mondayStart,
+
+        mondayEnd,
+
+        data,
+      });
     }
 
     /*
@@ -158,6 +443,7 @@ export default async function handler(req, res) {
         endDate,
         endTime,
         zone,
+        activite,
       } = req.body || {};
 
       if (!itemId) {
@@ -168,25 +454,29 @@ export default async function handler(req, res) {
 
       if (!startDate) {
         return res.status(400).json({
-          error: "startDate manquant.",
+          error:
+            "startDate manquant.",
         });
       }
 
       if (!startTime) {
         return res.status(400).json({
-          error: "startTime manquant.",
+          error:
+            "startTime manquant.",
         });
       }
 
       if (!endDate) {
         return res.status(400).json({
-          error: "endDate manquant.",
+          error:
+            "endDate manquant.",
         });
       }
 
       if (!endTime) {
         return res.status(400).json({
-          error: "endTime manquant.",
+          error:
+            "endTime manquant.",
         });
       }
 
@@ -196,11 +486,13 @@ export default async function handler(req, res) {
         });
       }
 
-      const zoneIndex = ZONE_INDEX[zone];
+      const zoneIndex =
+        ZONE_INDEX[zone];
 
       if (!zoneIndex) {
         return res.status(400).json({
-          error: `Zone inconnue : ${zone}`,
+          error:
+            `Zone inconnue : ${zone}`,
         });
       }
 
@@ -220,13 +512,6 @@ export default async function handler(req, res) {
           endTime
         );
 
-      /*
-       * Monday accepte plusieurs colonnes
-       * dans une seule mutation.
-       *
-       * Cela évite de faire 3 ou 4 appels séparés
-       * pour chaque activité.
-       */
       const columnValues = {
         [COLUMN_IDS.debut]: {
           date: mondayStart.date,
@@ -243,13 +528,31 @@ export default async function handler(req, res) {
         },
       };
 
+      /*
+       * Si un nouveau nom d'activité
+       * est fourni, on modifie également
+       * le nom de l'item Monday.
+       */
+      if (
+        activite &&
+        activite.trim()
+      ) {
+        columnValues[
+          COLUMN_IDS.activite
+        ] = activite.trim();
+      }
+
       const mutation = `
         mutation {
           change_multiple_column_values(
             item_id: ${Number(itemId)},
-            board_id: ${Number(BOARD_ID)},
+            board_id: ${Number(
+              BOARD_ID
+            )},
             column_values: ${JSON.stringify(
-              JSON.stringify(columnValues)
+              JSON.stringify(
+                columnValues
+              )
             )}
           ) {
             id
@@ -263,7 +566,8 @@ export default async function handler(req, res) {
           method: "POST",
 
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
             Authorization:
               process.env.MONDAY_API_TOKEN,
           },
@@ -274,7 +578,8 @@ export default async function handler(req, res) {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok || data.errors) {
         console.error(
@@ -305,10 +610,14 @@ export default async function handler(req, res) {
     }
 
     /*
-     * Méthode HTTP non supportée.
+     * ================================
+     * MÉTHODE HTTP NON SUPPORTÉE
+     * ================================
      */
+
     return res.status(405).json({
-      error: "Méthode non supportée.",
+      error:
+        "Méthode non supportée.",
     });
   } catch (error) {
     console.error(
