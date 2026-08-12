@@ -159,6 +159,7 @@ function getTime(item, columnId) {
    * On retire donc 1 heure pour retrouver l'heure
    * affichée dans notre programmation.
    */
+
   const totalMinutes =
     hours * 60 + minutes - 60;
 
@@ -236,9 +237,9 @@ function App() {
     useState("");
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * POPUP
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   const [editingItem, setEditingItem] =
@@ -260,9 +261,9 @@ function App() {
     useState("");
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * CHARGEMENT MONDAY
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   async function loadActivities() {
@@ -372,9 +373,9 @@ function App() {
   }, []);
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * AUTO-SCROLL PENDANT LE DRAG
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   useEffect(() => {
@@ -455,9 +456,9 @@ function App() {
   }, [draggedGroup]);
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * ACTIVITÉS DU JOUR
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   const selectedActivities =
@@ -472,9 +473,9 @@ function App() {
     ]);
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * GROUPES
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   const activityGroups =
@@ -527,9 +528,9 @@ function App() {
   }
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * DRAG & DROP
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   function handleDragStart(group) {
@@ -691,32 +692,35 @@ function App() {
         draggedGroup.activities.map(
           async (activity) => {
             const response =
-              await fetch("/api/monday", {
-                method: "PUT",
+              await fetch(
+                "/api/monday",
+                {
+                  method: "PUT",
 
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                  },
 
-                body: JSON.stringify({
-                  itemId: activity.id,
+                  body: JSON.stringify({
+                    itemId: activity.id,
 
-                  startDate:
-                    activity.date,
+                    startDate:
+                      activity.date,
 
-                  startTime:
-                    newStartTime,
+                    startTime:
+                      newStartTime,
 
-                  endDate:
-                    activity.date,
+                    endDate:
+                      activity.date,
 
-                  endTime:
-                    newEndTime,
+                    endTime:
+                      newEndTime,
 
-                  zone: newZone,
-                }),
-              });
+                    zone: newZone,
+                  }),
+                }
+              );
 
             const data =
               await response.json();
@@ -758,9 +762,9 @@ function App() {
   }
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * OUVERTURE DU POPUP
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   function openActivityEditor(activity) {
@@ -824,9 +828,9 @@ function App() {
   }
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * SAUVEGARDE DU POPUP
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   async function handleSaveEditor() {
@@ -870,9 +874,7 @@ function App() {
       }
 
       /*
-       * ------------------------------------------------
        * ACTIVITÉ INDIVIDUELLE
-       * ------------------------------------------------
        */
 
       if (
@@ -883,35 +885,38 @@ function App() {
           editingItem.activity;
 
         const response =
-          await fetch("/api/monday", {
-            method: "PUT",
+          await fetch(
+            "/api/monday",
+            {
+              method: "PUT",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
 
-            body: JSON.stringify({
-              itemId: activity.id,
+              body: JSON.stringify({
+                itemId: activity.id,
 
-              activite:
-                editForm.activite,
+                activite:
+                  editForm.activite,
 
-              startDate:
-                newDate,
+                startDate:
+                  newDate,
 
-              startTime:
-                newStart,
+                startTime:
+                  newStart,
 
-              endDate:
-                newDate,
+                endDate:
+                  newDate,
 
-              endTime:
-                newEnd,
+                endTime:
+                  newEnd,
 
-              zone: newZone,
-            }),
-          });
+                zone: newZone,
+              }),
+            }
+          );
 
         const data =
           await response.json();
@@ -928,9 +933,6 @@ function App() {
           );
         }
 
-        /*
-         * Mise à jour immédiate de l'interface.
-         */
         setActivities((current) =>
           current.map((item) =>
             item.id === activity.id
@@ -954,9 +956,7 @@ function App() {
       }
 
       /*
-       * ------------------------------------------------
        * GROUPE
-       * ------------------------------------------------
        */
 
       else if (
@@ -1031,10 +1031,6 @@ function App() {
           saveRequests
         );
 
-        /*
-         * Mise à jour immédiate de tous
-         * les membres du groupe.
-         */
         setActivities((current) =>
           current.map((item) =>
             groupIds.includes(
@@ -1056,16 +1052,8 @@ function App() {
         );
       }
 
-      /*
-       * Ferme le popup.
-       */
       setEditingItem(null);
 
-      /*
-       * Si on a changé la journée,
-       * on affiche automatiquement
-       * la nouvelle journée.
-       */
       setSelectedDay(newDate);
 
       setSaveMessage(
@@ -1084,13 +1072,13 @@ function App() {
   }
 
   /*
-   * ----------------------------------------------------
+   * ------------------------------------------------
    * RENDU
-   * ----------------------------------------------------
+   * ------------------------------------------------
    */
 
   return (
-    <div className="min-h-screen bg-[#151619] text-[#ebebed]">
+    <div className="min-h-screen bg-[#151619] text-white">
 
       <header className="border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
 
@@ -1331,10 +1319,6 @@ function App() {
                                       .activities[0]
                                   );
 
-                                /*
-                                 * Un seul élément
-                                 * dans le groupe
-                                 */
                                 const isSingleActivity =
                                   group
                                     .activities
@@ -1359,20 +1343,9 @@ function App() {
                                     onClick={(
                                       event
                                     ) => {
-                                      /*
-                                       * Le clic ne doit
-                                       * pas être considéré
-                                       * comme un clic sur
-                                       * un bloc parent.
-                                       */
+
                                       event.stopPropagation();
 
-                                      /*
-                                       * Si un drag vient
-                                       * d'avoir lieu,
-                                       * on ne veut pas
-                                       * ouvrir le popup.
-                                       */
                                       if (
                                         draggedGroup
                                       ) {
@@ -1487,23 +1460,15 @@ function App() {
 
       </main>
 
-      {/*
-       * ==================================================
-       * POPUP D'ÉDITION
-       * ==================================================
-       */}
+      {/* POPUP D'ÉDITION */}
 
       {editingItem && (
 
         <div
-          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[2000] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
           onMouseDown={(
             event
           ) => {
-            /*
-             * Cliquer dans le fond ferme
-             * le popup.
-             */
             if (
               event.target ===
               event.currentTarget
@@ -1513,9 +1478,16 @@ function App() {
           }}
         >
 
-          <div className="w-full max-w-lg rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
+          <div
+            className="flex w-full max-w-lg max-h-[calc(100vh-32px)] flex-col overflow-hidden rounded-xl border border-[#3a3b42] bg-[#1b1c20] shadow-2xl"
+            onMouseDown={(event) =>
+              event.stopPropagation()
+            }
+          >
 
-            <div className="mb-6 flex items-start justify-between">
+            {/* HEADER FIXE */}
+
+            <div className="flex shrink-0 items-start justify-between border-b border-[#303137] p-6">
 
               <div>
 
@@ -1552,21 +1524,115 @@ function App() {
 
             </div>
 
-            <div className="space-y-5">
+            {/* CONTENU SCROLLABLE */}
 
-              {editingItem.type ===
-                "activity" && (
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+
+              <div className="space-y-5">
+
+                {editingItem.type ===
+                  "activity" && (
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                      Activité
+                    </label>
+
+                    <input
+                      type="text"
+                      value={
+                        editForm.activite
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            activite:
+                              event.target
+                                .value,
+                          })
+                        )
+                      }
+                      className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none transition focus:border-[#8580d9]"
+                    />
+
+                  </div>
+
+                )}
+
+                {editingItem.type ===
+                  "group" && (
+
+                  <div className="rounded-lg border border-[#303137] bg-[#151619] p-3">
+
+                    <div className="mb-2 flex items-center justify-between">
+
+                      <div className="text-xs font-medium text-[#85858c]">
+                        ACTIVITÉS DU GROUPE
+                      </div>
+
+                      <div className="text-xs text-[#66676e]">
+                        {
+                          editingItem.group.activities.length
+                        }{" "}
+                        activité
+                        {editingItem.group.activities.length !==
+                        1
+                          ? "s"
+                          : ""}
+                      </div>
+
+                    </div>
+
+                    {/* 
+                     * LISTE DES ACTIVITÉS
+                     * SCROLLABLE INDÉPENDAMMENT
+                     */}
+
+                    <div className="max-h-40 overflow-y-auto rounded-md border border-[#292a2f] bg-[#111214] p-2">
+
+                      <div className="space-y-1">
+
+                        {editingItem.group.activities.map(
+                          (
+                            activity
+                          ) => (
+
+                            <div
+                              key={
+                                activity.id
+                              }
+                              className="rounded px-2 py-1 text-sm text-[#e4e4e7] hover:bg-[#1d1e22]"
+                            >
+                              •{" "}
+                              {
+                                activity.activite
+                              }
+                            </div>
+
+                          )
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                )}
 
                 <div>
 
                   <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                    Activité
+                    Journée
                   </label>
 
-                  <input
-                    type="text"
+                  <select
                     value={
-                      editForm.activite
+                      editForm.date
                     }
                     onChange={(
                       event
@@ -1574,111 +1640,141 @@ function App() {
                       setEditForm(
                         (current) => ({
                           ...current,
-                          activite:
+                          date:
                             event.target
                               .value,
                         })
                       )
                     }
-                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none transition focus:border-[#8580d9]"
-                  />
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                  >
 
-                </div>
+                    {days.map(
+                      (day) => (
 
-              )}
-
-              {editingItem.type ===
-                "group" && (
-
-                <div className="rounded-lg border border-[#303137] bg-[#151619] p-3">
-
-                  <div className="mb-2 text-xs font-medium text-[#85858c]">
-                    ACTIVITÉS DU GROUPE
-                  </div>
-
-                  <div className="space-y-1">
-
-                    {editingItem.group.activities.map(
-                      (activity) => (
-
-                        <div
+                        <option
                           key={
-                            activity.id
+                            day.date
                           }
-                          className="text-sm text-[#e4e4e7]"
+                          value={
+                            day.date
+                          }
                         >
-                          •{" "}
-                          {
-                            activity.activite
-                          }
-                        </div>
+                          {day.label}
+                        </option>
 
                       )
                     )}
+
+                  </select>
+
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                      Heure de début
+                    </label>
+
+                    <select
+                      value={
+                        editForm.debut
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            debut:
+                              event.target
+                                .value,
+                          })
+                        )
+                      }
+                      className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                    >
+
+                      {times.map(
+                        (time) => (
+
+                          <option
+                            key={
+                              time
+                            }
+                            value={
+                              time
+                            }
+                          >
+                            {time}
+                          </option>
+
+                        )
+                      )}
+
+                    </select>
+
+                  </div>
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                      Heure de fin
+                    </label>
+
+                    <select
+                      value={
+                        editForm.fin
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        setEditForm(
+                          (current) => ({
+                            ...current,
+                            fin:
+                              event.target
+                                .value,
+                          })
+                        )
+                      }
+                      className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                    >
+
+                      {times.map(
+                        (time) => (
+
+                          <option
+                            key={
+                              time
+                            }
+                            value={
+                              time
+                            }
+                          >
+                            {time}
+                          </option>
+
+                        )
+                      )}
+
+                    </select>
 
                   </div>
 
                 </div>
 
-              )}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                  Journée
-                </label>
-
-                <select
-                  value={
-                    editForm.date
-                  }
-                  onChange={(
-                    event
-                  ) =>
-                    setEditForm(
-                      (current) => ({
-                        ...current,
-                        date:
-                          event.target
-                            .value,
-                      })
-                    )
-                  }
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                >
-
-                  {days.map(
-                    (day) => (
-
-                      <option
-                        key={
-                          day.date
-                        }
-                        value={
-                          day.date
-                        }
-                      >
-                        {day.label}
-                      </option>
-
-                    )
-                  )}
-
-                </select>
-
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-
                 <div>
 
                   <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                    Heure de début
+                    Zone
                   </label>
 
                   <select
                     value={
-                      editForm.debut
+                      editForm.zone
                     }
                     onChange={(
                       event
@@ -1686,7 +1782,7 @@ function App() {
                       setEditForm(
                         (current) => ({
                           ...current,
-                          debut:
+                          zone:
                             event.target
                               .value,
                         })
@@ -1695,14 +1791,14 @@ function App() {
                     className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
                   >
 
-                    {times.map(
-                      (time) => (
+                    {zones.map(
+                      (zone) => (
 
                         <option
-                          key={time}
-                          value={time}
+                          key={zone}
+                          value={zone}
                         >
-                          {time}
+                          {zone}
                         </option>
 
                       )
@@ -1712,110 +1808,30 @@ function App() {
 
                 </div>
 
-                <div>
+                {editError && (
 
-                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                    Heure de fin
-                  </label>
+                  <div className="rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
+                    {editError}
+                  </div>
 
-                  <select
-                    value={
-                      editForm.fin
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setEditForm(
-                        (current) => ({
-                          ...current,
-                          fin:
-                            event.target
-                              .value,
-                        })
-                      )
-                    }
-                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                  >
-
-                    {times.map(
-                      (time) => (
-
-                        <option
-                          key={time}
-                          value={time}
-                        >
-                          {time}
-                        </option>
-
-                      )
-                    )}
-
-                  </select>
-
-                </div>
+                )}
 
               </div>
-
-              <div>
-
-                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                  Zone
-                </label>
-
-                <select
-                  value={
-                    editForm.zone
-                  }
-                  onChange={(
-                    event
-                  ) =>
-                    setEditForm(
-                      (current) => ({
-                        ...current,
-                        zone:
-                          event.target
-                            .value,
-                      })
-                    )
-                  }
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                >
-
-                  {zones.map(
-                    (zone) => (
-
-                      <option
-                        key={zone}
-                        value={zone}
-                      >
-                        {zone}
-                      </option>
-
-                    )
-                  )}
-
-                </select>
-
-              </div>
-
-              {editError && (
-
-                <div className="rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
-                  {editError}
-                </div>
-
-              )}
 
             </div>
 
-            <div className="mt-7 flex justify-end gap-3">
+            {/* FOOTER FIXE */}
+
+            <div className="flex shrink-0 justify-end gap-3 border-t border-[#303137] bg-[#1b1c20] p-6">
 
               <button
                 type="button"
                 onClick={
                   closeEditor
                 }
-                disabled={editSaving}
+                disabled={
+                  editSaving
+                }
                 className="rounded-lg border border-[#3a3b42] bg-[#303137] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#404148] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Annuler
