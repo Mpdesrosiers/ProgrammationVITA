@@ -268,14 +268,25 @@ export default async function handler(req, res) {
      */
 
     async function getMondayItem(itemId) {
-      const items =
-        await getAllMondayItems();
+      const query = `
+        query {
+          items(ids: [${Number(itemId)}]) {
+            id
+            name
+            column_values {
+              id
+              text
+              value
+            }
+          }
+        }
+      `;
 
-      const item = items.find(
-        (currentItem) =>
-          String(currentItem.id) ===
-          String(itemId)
-      );
+      const data =
+        await mondayRequest(query);
+
+      const item =
+        data.data?.items?.[0];
 
       if (!item) {
         throw new Error(
@@ -284,6 +295,13 @@ export default async function handler(req, res) {
       }
 
       return item;
+    }
+
+    async function waitForMonday() {
+      await new Promise(
+        (resolve) =>
+          setTimeout(resolve, 1800)
+      );
     }
 
     /*
@@ -479,8 +497,10 @@ export default async function handler(req, res) {
       }
 
       /*
-       * Relire l'item.
+       * Relire directement l'item après propagation.
        */
+
+      await waitForMonday();
 
       const savedItem =
         await getMondayItem(
@@ -761,7 +781,9 @@ export default async function handler(req, res) {
        * ========================================================
        */
 
-      const savedItem =
+      await waitForMonday();
+
+      let savedItem =
         await getMondayItem(
           itemId
         );
@@ -976,6 +998,89 @@ export default async function handler(req, res) {
 
           mondayItem:
             savedItem,
+        });
+      }
+
+      /*
+       * Vérifier une seconde fois que Monday conserve
+       * réellement les valeurs avant d'annoncer le succès.
+       */
+
+      await waitForMonday();
+
+      savedItem =
+        await getMondayItem(
+          itemId
+        );
+
+      const stableStart =
+        parseMondayDateValue(
+          savedItem.column_values?.find(
+            (column) =>
+              column.id ===
+              COLUMN_IDS.debut
+          )
+        );
+
+      const stableEnd =
+        parseMondayDateValue(
+          savedItem.column_values?.find(
+            (column) =>
+              column.id ===
+              COLUMN_IDS.fin
+          )
+        );
+
+      const stableZone =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.zone
+        )?.text || "";
+
+      const stableActivity =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.activite
+        )?.text || "";
+
+      const valuesAreStable =
+        stableStart?.date === expectedStartDate &&
+        stableStart?.time?.substring(0, 5) ===
+          expectedStartTime &&
+        stableEnd?.date === expectedEndDate &&
+        stableEnd?.time?.substring(0, 5) ===
+          expectedEndTime &&
+        stableZone === zone &&
+        (
+          typeof activite !== "string" ||
+          !activite.trim() ||
+          stableActivity === activite.trim()
+        );
+
+      if (!valuesAreStable) {
+        return res.status(409).json({
+          error:
+            "Monday a d'abord accepté la modification, puis a rétabli d'anciennes valeurs.",
+          expected: {
+            activite:
+              typeof activite === "string"
+                ? activite.trim()
+                : undefined,
+            zone,
+            startDate: expectedStartDate,
+            startTime: expectedStartTime,
+            endDate: expectedEndDate,
+            endTime: expectedEndTime,
+          },
+          actual: {
+            activite: stableActivity,
+            zone: stableZone,
+            start: stableStart,
+            end: stableEnd,
+          },
+          mondayItem: savedItem,
         });
       }
 
