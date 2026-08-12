@@ -237,6 +237,38 @@ function App() {
 
   /*
    * ------------------------------------------------
+   * ZOOM DU CALENDRIER
+   * ------------------------------------------------
+   *
+   * 100 % = 45 px par tranche de 30 minutes.
+   *
+   * 60 % = 27 px
+   * 70 % = 31.5 px
+   * 80 % = 36 px
+   * 90 % = 40.5 px
+   * 100 % = 45 px
+   * 110 % = 49.5 px
+   * 120 % = 54 px
+   */
+
+  const [zoom, setZoom] = useState(100);
+
+  const zoomScale = zoom / 100;
+
+  const rowHeight = 45 * zoomScale;
+
+  const timeColumnWidth = 80 * zoomScale;
+
+  const zoneColumnWidth = 180 * zoomScale;
+
+  const calendarFontSize =
+    Math.max(9, 12 * zoomScale);
+
+  const zoneHeaderFontSize =
+    Math.max(9, 14 * zoomScale);
+
+  /*
+   * ------------------------------------------------
    * POPUP
    * ------------------------------------------------
    */
@@ -273,7 +305,8 @@ function App() {
         "/api/monday"
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok || data.error) {
         throw new Error(
@@ -284,8 +317,8 @@ function App() {
       }
 
       const items =
-        data.data?.boards?.[0]?.items_page
-          ?.items || [];
+        data.data?.boards?.[0]
+          ?.items_page?.items || [];
 
       const formattedActivities =
         items
@@ -387,6 +420,7 @@ function App() {
       const maxSpeed = 18;
 
       const mouseY = event.clientY;
+
       const windowHeight =
         window.innerHeight;
 
@@ -521,11 +555,15 @@ function App() {
       end - start;
 
     /*
-     * 45 px par tranche de 30 minutes.
+     * 45 px à 100 %.
+     * Le zoom est appliqué directement
+     * à la hauteur réelle du bloc.
      */
     return Math.max(
-      (duration / 30) * 45 - 4,
-      34
+      (duration / 30) *
+        rowHeight -
+        4 * zoomScale,
+      34 * zoomScale
     );
   }
 
@@ -585,8 +623,16 @@ function App() {
     const relativeY =
       clientY - rect.top;
 
+    /*
+     * On utilise maintenant la moitié
+     * de la hauteur réelle de la cellule.
+     *
+     * Donc ça fonctionne également
+     * lorsque le zoom est modifié.
+     */
     const half =
-      relativeY >= 22.5
+      relativeY >=
+      rect.height / 2
         ? 30
         : 0;
 
@@ -665,7 +711,8 @@ function App() {
 
     const draggedIds =
       draggedGroup.activities.map(
-        (activity) => activity.id
+        (activity) =>
+          activity.id
       );
 
     setActivities((current) =>
@@ -694,32 +741,37 @@ function App() {
         draggedGroup.activities.map(
           async (activity) => {
             const response =
-              await fetch("/api/monday", {
-                method: "PUT",
+              await fetch(
+                "/api/monday",
+                {
+                  method: "PUT",
 
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                  },
 
-                body: JSON.stringify({
-                  itemId: activity.id,
+                  body: JSON.stringify({
+                    itemId:
+                      activity.id,
 
-                  startDate:
-                    activity.date,
+                    startDate:
+                      activity.date,
 
-                  startTime:
-                    newStartTime,
+                    startTime:
+                      newStartTime,
 
-                  endDate:
-                    activity.date,
+                    endDate:
+                      activity.date,
 
-                  endTime:
-                    newEndTime,
+                    endTime:
+                      newEndTime,
 
-                  zone: newZone,
-                }),
-              });
+                    zone:
+                      newZone,
+                  }),
+                }
+              );
 
             const data =
               await response.json();
@@ -766,7 +818,9 @@ function App() {
    * ------------------------------------------------
    */
 
-  function openActivityEditor(activity) {
+  function openActivityEditor(
+    activity
+  ) {
     setEditError("");
 
     setEditingItem({
@@ -779,13 +833,16 @@ function App() {
         activity.activite || "",
 
       date:
-        activity.date || selectedDay,
+        activity.date ||
+        selectedDay,
 
       debut:
-        activity.debut || "05:30",
+        activity.debut ||
+        "05:30",
 
       fin:
-        activity.fin || "06:00",
+        activity.fin ||
+        "06:00",
 
       zone:
         activity.zone ||
@@ -805,13 +862,16 @@ function App() {
       activite: "",
 
       date:
-        group.date || selectedDay,
+        group.date ||
+        selectedDay,
 
       debut:
-        group.debut || "05:30",
+        group.debut ||
+        "05:30",
 
       fin:
-        group.fin || "06:00",
+        group.fin ||
+        "06:00",
 
       zone:
         group.zone ||
@@ -857,7 +917,10 @@ function App() {
         );
       }
 
-      if (!newStart || !newEnd) {
+      if (
+        !newStart ||
+        !newEnd
+      ) {
         throw new Error(
           "Veuillez choisir une heure de début et de fin."
         );
@@ -884,35 +947,40 @@ function App() {
           editingItem.activity;
 
         const response =
-          await fetch("/api/monday", {
-            method: "PUT",
+          await fetch(
+            "/api/monday",
+            {
+              method: "PUT",
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
 
-            body: JSON.stringify({
-              itemId: activity.id,
+              body: JSON.stringify({
+                itemId:
+                  activity.id,
 
-              activite:
-                editForm.activite,
+                activite:
+                  editForm.activite,
 
-              startDate:
-                newDate,
+                startDate:
+                  newDate,
 
-              startTime:
-                newStart,
+                startTime:
+                  newStart,
 
-              endDate:
-                newDate,
+                endDate:
+                  newDate,
 
-              endTime:
-                newEnd,
+                endTime:
+                  newEnd,
 
-              zone: newZone,
-            }),
-          });
+                zone:
+                  newZone,
+              }),
+            }
+          );
 
         const data =
           await response.json();
@@ -931,7 +999,8 @@ function App() {
 
         setActivities((current) =>
           current.map((item) =>
-            item.id === activity.id
+            item.id ===
+            activity.id
               ? {
                   ...item,
 
@@ -1094,32 +1163,89 @@ function App() {
 
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
 
-              {days.map((day) => (
+              {/* JOURS */}
+
+              <div className="flex gap-2">
+
+                {days.map((day) => (
+
+                  <button
+                    key={day.date}
+                    type="button"
+                    onClick={() =>
+                      setSelectedDay(
+                        day.date
+                      )
+                    }
+                    className={
+                      "rounded-md px-5 py-2 text-sm font-semibold transition " +
+                      (
+                        selectedDay ===
+                        day.date
+                          ? "bg-[#8580d9] text-[#151619]"
+                          : "bg-[#303137] text-white hover:bg-[#404148]"
+                      )
+                    }
+                  >
+                    {day.label}
+                  </button>
+
+                ))}
+
+              </div>
+
+              {/* ZOOM */}
+
+              <div className="flex items-center rounded-lg border border-[#303137] bg-[#151619] p-1">
 
                 <button
-                  key={day.date}
                   type="button"
                   onClick={() =>
-                    setSelectedDay(
-                      day.date
+                    setZoom(
+                      (current) =>
+                        Math.max(
+                          60,
+                          current - 10
+                        )
                     )
                   }
-                  className={
-                    "rounded-md px-5 py-2 text-sm font-semibold transition " +
-                    (
-                      selectedDay ===
-                      day.date
-                        ? "bg-[#8580d9] text-[#151619]"
-                        : "bg-[#303137] text-white hover:bg-[#404148]"
-                    )
-                  }
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-lg text-white transition hover:bg-[#303137]"
+                  title="Dézoomer"
                 >
-                  {day.label}
+                  −
                 </button>
 
-              ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setZoom(100)
+                  }
+                  className="min-w-[52px] rounded-md px-2 py-1.5 text-xs font-semibold text-[#a1a1a8] transition hover:bg-[#303137] hover:text-white"
+                  title="Réinitialiser le zoom"
+                >
+                  {zoom}%
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setZoom(
+                      (current) =>
+                        Math.min(
+                          120,
+                          current + 10
+                        )
+                    )
+                  }
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-lg text-white transition hover:bg-[#303137]"
+                  title="Zoomer"
+                >
+                  +
+                </button>
+
+              </div>
 
             </div>
 
@@ -1198,255 +1324,347 @@ function App() {
 
               </div>
 
+              {/* CALENDRIER */}
+
               <div
-                className="mx-auto grid min-w-[1400px] max-w-[1800px]"
+                className="mx-auto"
                 style={{
-                  gridTemplateColumns:
-                    "80px repeat(7, minmax(180px, 1fr))",
+                  minWidth: `${
+                    timeColumnWidth +
+                    zoneColumnWidth *
+                      zones.length
+                  }px`,
                 }}
               >
 
-                <div className="border-b border-r border-[#303137] bg-[#151619]" />
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateColumns:
+                      `${timeColumnWidth}px repeat(${zones.length}, ${zoneColumnWidth}px)`,
+                  }}
+                >
 
-                {zones.map((zone) => (
+                  {/* CELLULE VIDE AU-DESSUS DES HEURES */}
 
                   <div
-                    key={zone}
-                    className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
-                  >
+                    className="border-b border-r border-[#303137] bg-[#151619]"
+                    style={{
+                      height: `${60 * zoomScale}px`,
+                    }}
+                  />
+
+                  {/* NOMS DES ZONES */}
+
+                  {zones.map((zone) => (
 
                     <div
-                      className="mx-auto mb-2 h-1 w-10 rounded-full"
+                      key={zone}
+                      className="border-b border-r border-[#303137] bg-[#1b1c20] text-center"
                       style={{
-                        backgroundColor:
-                          zoneColors[
-                            zone
-                          ].border,
+                        height: `${60 * zoomScale}px`,
+                        padding:
+                          `${12 * zoomScale}px ${8 * zoomScale}px`,
                       }}
-                    />
+                    >
 
-                    <div className="text-sm font-semibold">
-                      {zone}
+                      <div
+                        className="mx-auto rounded-full"
+                        style={{
+                          width: `${40 * zoomScale}px`,
+                          height: `${4 * zoomScale}px`,
+                          marginBottom: `${8 * zoomScale}px`,
+                          backgroundColor:
+                            zoneColors[
+                              zone
+                            ].border,
+                        }}
+                      />
+
+                      <div
+                        className="font-semibold"
+                        style={{
+                          fontSize: `${zoneHeaderFontSize}px`,
+                        }}
+                      >
+                        {zone}
+                      </div>
+
                     </div>
 
-                  </div>
+                  ))}
 
-                ))}
+                  {/* CRÉNEAUX */}
 
-                {times.map((time) => (
+                  {times.map((time) => (
 
-                  <React.Fragment
-                    key={time}
-                  >
+                    <React.Fragment
+                      key={time}
+                    >
 
-                    <div className="flex h-[45px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
-                      {time}
-                    </div>
+                      {/* HEURE */}
 
-                    {zones.map(
-                      (zone) => {
+                      <div
+                        className="flex items-center justify-end border-b border-r border-[#303137] bg-[#151619] text-[#a1a1a8]"
+                        style={{
+                          height: `${rowHeight}px`,
+                          paddingRight: `${12 * zoomScale}px`,
+                          fontSize: `${Math.max(
+                            9,
+                            12 * zoomScale
+                          )}px`,
+                        }}
+                      >
+                        {time}
+                      </div>
 
-                        const groupsHere =
-                          activityGroups.filter(
-                            (group) =>
-                              group.zone ===
-                                zone &&
-                              group.debut ===
+                      {/* ZONES */}
+
+                      {zones.map(
+                        (zone) => {
+
+                          const groupsHere =
+                            activityGroups.filter(
+                              (group) =>
+                                group.zone ===
+                                  zone &&
+                                group.debut ===
+                                  time
+                            );
+
+                          const isPreview =
+                            draggedGroup &&
+                            dragPreview &&
+                            dragPreview.zone ===
+                              zone &&
+                            dragPreview.time ===
+                              time;
+
+                          return (
+
+                            <div
+                              key={`${time}-${zone}`}
+                              data-time={
                                 time
-                          );
-
-                        const isPreview =
-                          draggedGroup &&
-                          dragPreview &&
-                          dragPreview.zone ===
-                            zone &&
-                          dragPreview.time ===
-                            time;
-
-                        return (
-
-                          <div
-                            key={`${time}-${zone}`}
-                            data-time={time}
-                            data-zone={zone}
-                            onDragOver={(
-                              event
-                            ) => {
-                              event.preventDefault();
-
-                              updateDragPreview(
+                              }
+                              data-zone={
+                                zone
+                              }
+                              onDragOver={(
                                 event
-                              );
-                            }}
-                            onDrop={
-                              handleDrop
-                            }
-                            className="relative h-[45px] border-b border-r border-[#303137] bg-[#151619]"
-                          >
+                              ) => {
+                                event.preventDefault();
 
-                            {isPreview && (
+                                updateDragPreview(
+                                  event
+                                );
+                              }}
+                              onDrop={
+                                handleDrop
+                              }
+                              className="relative border-b border-r border-[#303137] bg-[#151619]"
+                              style={{
+                                height: `${rowHeight}px`,
+                              }}
+                            >
 
-                              <div
-                                className="pointer-events-none absolute left-1 right-1 top-1 z-[999] rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
-                                style={{
-                                  height:
-                                    draggedGroup
-                                      ? getGroupHeight(
-                                          draggedGroup
-                                        )
-                                      : 40,
-                                }}
-                              >
+                              {/* APERÇU DE DROP */}
 
-                                <div className="px-2 py-1 text-[10px] font-semibold text-white">
-                                  {dragPreview.time}
-                                </div>
+                              {isPreview && (
 
-                              </div>
-
-                            )}
-
-                            {groupsHere.map(
-                              (group) => {
-
-                                const groupColor =
-                                  getActivityColor(
-                                    group
-                                      .activities[0]
-                                  );
-
-                                const isSingleActivity =
-                                  group
-                                    .activities
-                                    .length ===
-                                  1;
-
-                                return (
+                                <div
+                                  className="pointer-events-none absolute left-1 right-1 top-1 z-[999] rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
+                                  style={{
+                                    height:
+                                      draggedGroup
+                                        ? getGroupHeight(
+                                            draggedGroup
+                                          )
+                                        : rowHeight -
+                                          4 *
+                                            zoomScale,
+                                  }}
+                                >
 
                                   <div
-                                    key={
-                                      group.id
-                                    }
-                                    draggable
-                                    onDragStart={() =>
-                                      handleDragStart(
-                                        group
-                                      )
-                                    }
-                                    onDragEnd={
-                                      handleDragEnd
-                                    }
-                                    onClick={(
-                                      event
-                                    ) => {
-
-                                      event.stopPropagation();
-
-                                      if (
-                                        draggedGroup
-                                      ) {
-                                        return;
-                                      }
-
-                                      if (
-                                        isSingleActivity
-                                      ) {
-                                        openActivityEditor(
-                                          group
-                                            .activities[0]
-                                        );
-                                      } else {
-                                        openGroupEditor(
-                                          group
-                                        );
-                                      }
-                                    }}
-                                    className={
-                                      "absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
-                                      (
-                                        draggedGroup?.id ===
-                                        group.id
-                                          ? "opacity-40"
-                                          : ""
-                                      )
-                                    }
+                                    className="font-semibold text-white"
                                     style={{
-                                      height:
-                                        getGroupHeight(
-                                          group
-                                        ),
-
-                                      backgroundColor:
-                                        groupColor.background,
-
-                                      borderColor:
-                                        groupColor.border,
+                                      padding: `${4 * zoomScale}px ${8 * zoomScale}px`,
+                                      fontSize: `${Math.max(
+                                        8,
+                                        10 *
+                                          zoomScale
+                                      )}px`,
                                     }}
-                                    title={
-                                      isSingleActivity
-                                        ? "Cliquer pour modifier • Glisser pour déplacer"
-                                        : "Cliquer pour modifier le groupe • Glisser pour déplacer"
-                                    }
                                   >
-
-                                    <div className="space-y-0.5">
-
-                                      {group.activities.map(
-                                        (
-                                          activity
-                                        ) => (
-
-                                          <div
-                                            key={
-                                              activity.id
-                                            }
-                                            className="flex items-start gap-1"
-                                          >
-
-                                            <span className="opacity-60">
-                                              •
-                                            </span>
-
-                                            <span>
-                                              {
-                                                activity.activite
-                                              }
-                                            </span>
-
-                                          </div>
-
-                                        )
-                                      )}
-
-                                    </div>
-
-                                    <div className="mt-1 text-[10px] font-medium opacity-70">
-
-                                      {
-                                        group.debut
-                                      }{" "}
-                                      –{" "}
-                                      {
-                                        group.fin
-                                      }
-
-                                    </div>
-
+                                    {
+                                      dragPreview.time
+                                    }
                                   </div>
 
-                                );
-                              }
-                            )}
+                                </div>
 
-                          </div>
+                              )}
 
-                        );
-                      }
-                    )}
+                              {/* GROUPES */}
 
-                  </React.Fragment>
+                              {groupsHere.map(
+                                (group) => {
 
-                ))}
+                                  const groupColor =
+                                    getActivityColor(
+                                      group
+                                        .activities[0]
+                                    );
+
+                                  const isSingleActivity =
+                                    group
+                                      .activities
+                                      .length ===
+                                    1;
+
+                                  return (
+
+                                    <div
+                                      key={
+                                        group.id
+                                      }
+                                      draggable
+                                      onDragStart={() =>
+                                        handleDragStart(
+                                          group
+                                        )
+                                      }
+                                      onDragEnd={
+                                        handleDragEnd
+                                      }
+                                      onClick={(
+                                        event
+                                      ) => {
+
+                                        event.stopPropagation();
+
+                                        if (
+                                          draggedGroup
+                                        ) {
+                                          return;
+                                        }
+
+                                        if (
+                                          isSingleActivity
+                                        ) {
+                                          openActivityEditor(
+                                            group
+                                              .activities[0]
+                                          );
+                                        } else {
+                                          openGroupEditor(
+                                            group
+                                          );
+                                        }
+                                      }}
+                                      className={
+                                        "absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
+                                        (
+                                          draggedGroup?.id ===
+                                          group.id
+                                            ? "opacity-40"
+                                            : ""
+                                        )
+                                      }
+                                      style={{
+                                        height:
+                                          getGroupHeight(
+                                            group
+                                          ),
+
+                                        padding: `${8 * zoomScale}px`,
+
+                                        backgroundColor:
+                                          groupColor.background,
+
+                                        borderColor:
+                                          groupColor.border,
+
+                                        fontSize: `${calendarFontSize}px`,
+                                      }}
+                                      title={
+                                        isSingleActivity
+                                          ? "Cliquer pour modifier • Glisser pour déplacer"
+                                          : "Cliquer pour modifier le groupe • Glisser pour déplacer"
+                                      }
+                                    >
+
+                                      <div
+                                        className="space-y-0.5"
+                                      >
+
+                                        {group.activities.map(
+                                          (
+                                            activity
+                                          ) => (
+
+                                            <div
+                                              key={
+                                                activity.id
+                                              }
+                                              className="flex items-start gap-1"
+                                            >
+
+                                              <span className="opacity-60">
+                                                •
+                                              </span>
+
+                                              <span>
+                                                {
+                                                  activity.activite
+                                                }
+                                              </span>
+
+                                            </div>
+
+                                          )
+                                        )}
+
+                                      </div>
+
+                                      <div
+                                        className="font-medium opacity-70"
+                                        style={{
+                                          marginTop: `${4 * zoomScale}px`,
+                                          fontSize: `${Math.max(
+                                            8,
+                                            10 *
+                                              zoomScale
+                                          )}px`,
+                                        }}
+                                      >
+                                        {
+                                          group.debut
+                                        }{" "}
+                                        –{" "}
+                                        {
+                                          group.fin
+                                        }
+                                      </div>
+
+                                    </div>
+
+                                  );
+                                }
+                              )}
+
+                            </div>
+
+                          );
+                        }
+                      )}
+
+                    </React.Fragment>
+
+                  ))}
+
+                </div>
 
               </div>
 
@@ -1536,7 +1754,8 @@ function App() {
                         (current) => ({
                           ...current,
                           activite:
-                            event.target
+                            event
+                              .target
                               .value,
                         })
                       )
@@ -1600,7 +1819,8 @@ function App() {
                       (current) => ({
                         ...current,
                         date:
-                          event.target
+                          event
+                            .target
                             .value,
                       })
                     )
@@ -1648,7 +1868,8 @@ function App() {
                         (current) => ({
                           ...current,
                           debut:
-                            event.target
+                            event
+                              .target
                               .value,
                         })
                       )
@@ -1690,7 +1911,8 @@ function App() {
                         (current) => ({
                           ...current,
                           fin:
-                            event.target
+                            event
+                              .target
                               .value,
                         })
                       )
@@ -1734,7 +1956,8 @@ function App() {
                       (current) => ({
                         ...current,
                         zone:
-                          event.target
+                          event
+                            .target
                             .value,
                       })
                     )
