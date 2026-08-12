@@ -24,10 +24,19 @@ function parseCookies(req) {
 }
 
 function sign(value) {
+  const secret =
+    process.env.AUTH_SESSION_SECRET;
+
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "AUTH_SESSION_SECRET est absente ou trop courte dans Vercel Production."
+    );
+  }
+
   return crypto
     .createHmac(
       "sha256",
-      process.env.AUTH_SESSION_SECRET
+      secret
     )
     .update(value)
     .digest("base64url");
@@ -80,6 +89,27 @@ export function setOAuthState(res, payload) {
     "Set-Cookie",
     cookie(OAUTH_COOKIE, createSignedValue(payload), 600)
   );
+}
+
+export function validateAuthConfig() {
+  const required = [
+    "MICROSOFT_CLIENT_ID",
+    "MICROSOFT_CLIENT_SECRET",
+    "MICROSOFT_TENANT_ID",
+    "APP_URL",
+    "AUTH_SESSION_SECRET",
+    "AUTH_ALLOWED_DOMAIN",
+  ];
+
+  const missing = required.filter(
+    (name) => !process.env[name]
+  );
+
+  if (missing.length) {
+    throw new Error(
+      `Variables Vercel manquantes : ${missing.join(", ")}`
+    );
+  }
 }
 
 export function clearOAuthState(res) {
