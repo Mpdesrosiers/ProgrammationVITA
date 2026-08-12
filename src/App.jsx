@@ -227,6 +227,9 @@ function App() {
   const [selectedDay, setSelectedDay] =
     useState("2026-09-18");
 
+  const [calendarZoom, setCalendarZoom] =
+    useState(100);
+
   const [activities, setActivities] =
     useState([]);
 
@@ -571,7 +574,7 @@ function App() {
       end - start;
 
     return Math.max(
-      (duration / 30) * 45 - 4,
+      (duration / 30) * 42 - 4,
       34
     );
   }
@@ -633,7 +636,7 @@ function App() {
       clientY - rect.top;
 
     const half =
-      relativeY >= 22.5
+      relativeY >= 21
         ? 30
         : 0;
 
@@ -1534,6 +1537,73 @@ function App() {
                       </span>
                     )}
 
+                  <div className="flex items-center gap-2 rounded-lg border border-[#303137] bg-[#1b1c20] px-3 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCalendarZoom(
+                          (current) =>
+                            Math.max(
+                              40,
+                              current - 10
+                            )
+                        )
+                      }
+                      className="rounded px-2 py-0.5 text-base text-[#c9c9ce] hover:bg-[#303137] hover:text-white"
+                      aria-label="Dézoomer"
+                    >
+                      −
+                    </button>
+
+                    <input
+                      type="range"
+                      min="40"
+                      max="100"
+                      step="5"
+                      value={calendarZoom}
+                      onChange={(event) =>
+                        setCalendarZoom(
+                          Number(
+                            event.target.value
+                          )
+                        )
+                      }
+                      className="w-24 accent-[#8580d9]"
+                      aria-label="Zoom du calendrier"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCalendarZoom(
+                          (current) =>
+                            Math.min(
+                              100,
+                              current + 10
+                            )
+                        )
+                      }
+                      className="rounded px-2 py-0.5 text-base text-[#c9c9ce] hover:bg-[#303137] hover:text-white"
+                      aria-label="Zoomer"
+                    >
+                      +
+                    </button>
+
+                    <span className="w-10 text-right text-xs text-[#a1a1a8]">
+                      {calendarZoom}%
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCalendarZoom(40)
+                      }
+                      className="ml-1 rounded-md bg-[#303137] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#404148]"
+                    >
+                      Vue d’ensemble
+                    </button>
+                  </div>
+
                   <span className="text-[#777980]">
                     Clic = modifier •
                     Glissez-déposez =
@@ -1550,6 +1620,8 @@ function App() {
                 style={{
                   gridTemplateColumns:
                     "80px repeat(7, minmax(180px, 1fr))",
+                  zoom:
+                    calendarZoom / 100,
                 }}
               >
 
@@ -1592,7 +1664,7 @@ function App() {
 
                     {/* HEURE */}
 
-                    <div className="flex h-[45px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
+                    <div className="flex h-[42px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
                       {time}
                     </div>
 
@@ -1649,7 +1721,7 @@ function App() {
                               handleDrop
                             }
                             className={
-                              "relative h-[45px] border-b border-r border-[#303137] bg-[#151619] transition " +
+                              "relative h-[42px] border-b border-r border-[#303137] bg-[#151619] transition " +
                               (
                                 groupsHere.length ===
                                 0
