@@ -438,7 +438,7 @@ export default async function handler(req, res) {
         },
 
         [COLUMN_IDS.zone]: {
-          index: zoneIndex,
+          label: zone,
         },
       };
 
@@ -486,6 +486,68 @@ export default async function handler(req, res) {
         await getMondayItem(
           newItem.id
         );
+
+      const savedActivity =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.activite
+        )?.text || "";
+
+      const savedZone =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.zone
+        )?.text || "";
+
+      const savedStart =
+        parseMondayDateValue(
+          savedItem.column_values?.find(
+            (column) =>
+              column.id ===
+              COLUMN_IDS.debut
+          )
+        );
+
+      const savedEnd =
+        parseMondayDateValue(
+          savedItem.column_values?.find(
+            (column) =>
+              column.id ===
+              COLUMN_IDS.fin
+          )
+        );
+
+      const creationMatches =
+        savedActivity === activite.trim() &&
+        savedZone === zone &&
+        savedStart?.date === mondayStart.date &&
+        savedStart?.time?.substring(0, 5) ===
+          mondayStart.time.substring(0, 5) &&
+        savedEnd?.date === mondayEnd.date &&
+        savedEnd?.time?.substring(0, 5) ===
+          mondayEnd.time.substring(0, 5);
+
+      if (!creationMatches) {
+        return res.status(500).json({
+          error:
+            "Monday a répondu, mais n'a pas enregistré toutes les valeurs de la nouvelle activité.",
+          expected: {
+            activite: activite.trim(),
+            zone,
+            start: mondayStart,
+            end: mondayEnd,
+          },
+          actual: {
+            activite: savedActivity,
+            zone: savedZone,
+            start: savedStart,
+            end: savedEnd,
+          },
+          mondayItem: savedItem,
+        });
+      }
 
       return res.status(200).json({
         success: true,
@@ -622,7 +684,7 @@ export default async function handler(req, res) {
         },
 
         [COLUMN_IDS.zone]: {
-          index: zoneIndex,
+          label: zone,
         },
       };
 
@@ -722,6 +784,20 @@ export default async function handler(req, res) {
             COLUMN_IDS.fin
         );
 
+      const savedZone =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.zone
+        )?.text || "";
+
+      const savedActivity =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.activite
+        )?.text || "";
+
       /*
        * Lire leurs valeurs JSON.
        */
@@ -804,6 +880,14 @@ export default async function handler(req, res) {
         actualEndTime ===
           expectedEndTime;
 
+      const zoneMatches =
+        savedZone === zone;
+
+      const activityMatches =
+        typeof activite !== "string" ||
+        !activite.trim() ||
+        savedActivity === activite.trim();
+
       console.log(
         "VÉRIFICATION FINALE MONDAY:",
         JSON.stringify(
@@ -830,6 +914,15 @@ export default async function handler(req, res) {
                 actualEndDate,
               endTime:
                 actualEndTime,
+              zone: savedZone,
+              activite: savedActivity,
+            },
+
+            matches: {
+              start: startMatches,
+              end: endMatches,
+              zone: zoneMatches,
+              activite: activityMatches,
             },
           },
           null,
@@ -844,13 +937,20 @@ export default async function handler(req, res) {
 
       if (
         !startMatches ||
-        !endMatches
+        !endMatches ||
+        !zoneMatches ||
+        !activityMatches
       ) {
         return res.status(500).json({
           error:
-            "Monday n'a pas enregistré exactement les heures demandées.",
+            "Monday n'a pas enregistré toutes les modifications demandées.",
 
           expected: {
+            activite:
+              typeof activite === "string"
+                ? activite.trim()
+                : undefined,
+            zone,
             startDate:
               expectedStartDate,
             startTime:
@@ -862,6 +962,8 @@ export default async function handler(req, res) {
           },
 
           actual: {
+            activite: savedActivity,
+            zone: savedZone,
             startDate:
               actualStartDate,
             startTime:
