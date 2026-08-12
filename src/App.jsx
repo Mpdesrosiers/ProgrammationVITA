@@ -281,6 +281,9 @@ function App() {
   const [printScope, setPrintScope] =
     useState("selected");
 
+  const [copiedActivity, setCopiedActivity] =
+    useState(null);
+
   /*
    * ================================
    * POPUP MODIFICATION
@@ -763,6 +766,39 @@ function App() {
       );
     };
   }, [history, activities, undoing]);
+
+  useEffect(() => {
+    function protectUnsavedWork(event) {
+      if (
+        !saving &&
+        !editSaving &&
+        !createSaving &&
+        !undoing
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener(
+      "beforeunload",
+      protectUnsavedWork
+    );
+
+    return () => {
+      window.removeEventListener(
+        "beforeunload",
+        protectUnsavedWork
+      );
+    };
+  }, [
+    saving,
+    editSaving,
+    createSaving,
+    undoing,
+  ]);
 
   /*
    * ================================
@@ -1687,6 +1723,134 @@ function App() {
     setCreatingActivity(true);
   }
 
+  function copyActivity(activity) {
+    setCopiedActivity({ ...activity });
+    setSaveMessage(
+      `✓ « ${activity.activite} » copiée — Ctrl+V pour coller`
+    );
+  }
+
+  useEffect(() => {
+    function handleClipboardShortcut(event) {
+      if (
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      const isEditingField =
+        target instanceof HTMLElement &&
+        (
+          target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(
+            target.tagName
+          )
+        );
+
+      if (isEditingField) return;
+
+      const key = event.key.toLowerCase();
+
+      if (
+        key === "c" &&
+        editingItem?.type === "activity"
+      ) {
+        event.preventDefault();
+        copyActivity(editingItem.activity);
+        setEditingItem(null);
+      }
+
+      if (key === "v" && copiedActivity) {
+        event.preventDefault();
+        handleDuplicateActivity(
+          copiedActivity
+        );
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleClipboardShortcut
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleClipboardShortcut
+      );
+    };
+  }, [editingItem, copiedActivity]);
+
+  function exportActivitiesCsv() {
+    const headers = [
+      "ID Monday",
+      "Activité",
+      "Journée",
+      "Date",
+      "Début",
+      "Fin",
+      "Zone",
+      "Volet",
+      "Statut",
+      "Catégorie couleur",
+      "Notes",
+    ];
+
+    const escapeCsv = (value) =>
+      `"${String(value ?? "").replaceAll(
+        '"',
+        '""'
+      )}"`;
+
+    const rows = activities
+      .slice()
+      .sort((a, b) =>
+        `${a.date}-${a.debut}-${a.zone}`
+          .localeCompare(
+            `${b.date}-${b.debut}-${b.zone}`
+          )
+      )
+      .map((activity) => [
+        activity.mondayId,
+        activity.activite,
+        days.find(
+          (day) => day.date === activity.date
+        )?.label || "",
+        activity.date,
+        activity.debut,
+        activity.fin,
+        activity.zone,
+        activity.volet,
+        activity.status,
+        activity.categorieCouleur,
+        activity.notes,
+      ]);
+
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row.map(escapeCsv).join(";")
+      )
+      .join("\r\n");
+
+    const blob = new Blob(
+      [`\uFEFF${csv}`],
+      { type: "text/csv;charset=utf-8" }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download =
+      `programmation-vita-${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
+
   /*
    * ================================
    * CRÉATION D'UNE ACTIVITÉ
@@ -1990,6 +2154,14 @@ function App() {
             Actualiser
           </button>
 
+          <button
+            type="button"
+            onClick={exportActivitiesCsv}
+            className="rounded-lg border border-[#3a3b42] bg-[#303137] px-3 py-2 text-sm text-white hover:bg-[#404148]"
+          >
+            Exporter CSV
+          </button>
+
           <span className="text-xs text-[#8fba91]">
             ● Synchronisé{lastSyncedAt
               ? ` à ${lastSyncedAt.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
@@ -2080,6 +2252,12 @@ function App() {
                 </div>
 
                 <div className="flex items-center gap-4">
+
+                  {copiedActivity && (
+                    <span className="text-xs text-[#b9b6ff]">
+                      Copié : {copiedActivity.activite}
+                    </span>
+                  )}
 
                   <div className="flex overflow-hidden rounded-lg border border-[#8580d9] bg-[#24233a]">
                     <button
@@ -2640,7 +2818,18 @@ function App() {
                   {activity.activite}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      copyActivity(activity);
+                      setContextMenu(null);
+                    }}
+                    className="rounded-md border border-[#8580d9] bg-[#24233a] px-2 py-2 text-xs font-semibold text-[#b9b6ff] hover:bg-[#302e4d]"
+                  >
+                    Copier
+                  </button>
+
                   <button
                     type="button"
                     onClick={() =>
