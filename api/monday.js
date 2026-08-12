@@ -1,3 +1,30 @@
+function addFourHours(date, time) {
+  const [hours, minutes] = time.split(":").map(Number);
+
+  let totalMinutes = hours * 60 + minutes + 240;
+
+  let newDate = date;
+
+  if (totalMinutes >= 1440) {
+    totalMinutes -= 1440;
+
+    const d = new Date(`${date}T00:00:00`);
+    d.setDate(d.getDate() + 1);
+
+    newDate = d.toISOString().split("T")[0];
+  }
+
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMinutes = totalMinutes % 60;
+
+  return {
+    date: newDate,
+    time: `${String(newHours).padStart(2, "0")}:${String(
+      newMinutes
+    ).padStart(2, "0")}`,
+  };
+}
+
 export default async function handler(req, res) {
   try {
     const token = process.env.MONDAY_API_TOKEN;
@@ -9,9 +36,12 @@ export default async function handler(req, res) {
     }
 
     /*
+     * ==========================================
      * GET
      * Charge les activités depuis Monday
+     * ==========================================
      */
+
     if (req.method === "GET") {
       const query = `
         query {
@@ -37,10 +67,12 @@ export default async function handler(req, res) {
         "https://api.monday.com/v2",
         {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
             Authorization: token,
           },
+
           body: JSON.stringify({
             query,
           }),
@@ -60,9 +92,12 @@ export default async function handler(req, res) {
     }
 
     /*
+     * ==========================================
      * PUT
      * Modifie une activité dans Monday
+     * ==========================================
      */
+
     if (req.method === "PUT") {
       const {
         itemId,
@@ -88,15 +123,46 @@ export default async function handler(req, res) {
       }
 
       /*
-       * Colonne début
+       * ==========================================
+       * CONVERSION DES HEURES
+       *
+       * L'application travaille avec l'heure
+       * locale de Montréal.
+       *
+       * Monday attend ici une valeur qui doit
+       * être décalée de +4 heures.
+       *
+       * Exemple :
+       * App     09:00
+       * Monday  13:00
+       *
+       * Monday réaffichera alors 09:00.
+       * ==========================================
        */
+
+      const mondayStart = addFourHours(
+        startDate,
+        startTime
+      );
+
+      const mondayEnd = addFourHours(
+        endDate,
+        endTime
+      );
+
+      /*
+       * ==========================================
+       * MODIFICATION DE L'HEURE DE DÉBUT
+       * ==========================================
+       */
+
       const startMutation = `
         mutation {
           change_column_value(
             board_id: 18425508055,
             item_id: ${itemId},
             column_id: "date_mm63hcxz",
-            value: "{\\"date\\":\\"${startDate}\\",\\"time\\":\\"${startTime}:00\\"}"
+            value: "{\\"date\\":\\"${mondayStart.date}\\",\\"time\\":\\"${mondayStart.time}:00\\"}"
           ) {
             id
           }
@@ -107,10 +173,12 @@ export default async function handler(req, res) {
         "https://api.monday.com/v2",
         {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
             Authorization: token,
           },
+
           body: JSON.stringify({
             query: startMutation,
           }),
@@ -133,15 +201,18 @@ export default async function handler(req, res) {
       }
 
       /*
-       * Colonne fin
+       * ==========================================
+       * MODIFICATION DE L'HEURE DE FIN
+       * ==========================================
        */
+
       const endMutation = `
         mutation {
           change_column_value(
             board_id: 18425508055,
             item_id: ${itemId},
             column_id: "date_mm63gzbs",
-            value: "{\\"date\\":\\"${endDate}\\",\\"time\\":\\"${endTime}:00\\"}"
+            value: "{\\"date\\":\\"${mondayEnd.date}\\",\\"time\\":\\"${mondayEnd.time}:00\\"}"
           ) {
             id
           }
@@ -152,10 +223,12 @@ export default async function handler(req, res) {
         "https://api.monday.com/v2",
         {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
             Authorization: token,
           },
+
           body: JSON.stringify({
             query: endMutation,
           }),
@@ -178,17 +251,18 @@ export default async function handler(req, res) {
       }
 
       /*
-       * Colonne zone
+       * ==========================================
+       * MODIFICATION DE LA ZONE
+       * ==========================================
        */
+
       const zoneMutation = `
         mutation {
           change_column_value(
             board_id: 18425508055,
             item_id: ${itemId},
             column_id: "color_mm63vn4d",
-            value: "${JSON.stringify({
-              label: zone,
-            }).replace(/"/g, '\\"')}"
+            value: "{\\"label\\":\\"${zone}\\"}"
           ) {
             id
           }
@@ -199,10 +273,12 @@ export default async function handler(req, res) {
         "https://api.monday.com/v2",
         {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json",
             Authorization: token,
           },
+
           body: JSON.stringify({
             query: zoneMutation,
           }),
@@ -224,16 +300,44 @@ export default async function handler(req, res) {
         });
       }
 
+      /*
+       * ==========================================
+       * SUCCÈS
+       * ==========================================
+       */
+
       return res.status(200).json({
         success: true,
+
         itemId,
-        startDate,
-        startTime,
-        endDate,
-        endTime,
-        zone,
+
+        app: {
+          startDate,
+          startTime,
+          endDate,
+          endTime,
+          zone,
+        },
+
+        monday: {
+          startDate:
+            mondayStart.date,
+          startTime:
+            mondayStart.time,
+          endDate:
+            mondayEnd.date,
+          endTime:
+            mondayEnd.time,
+          zone,
+        },
       });
     }
+
+    /*
+     * ==========================================
+     * AUTRES MÉTHODES
+     * ==========================================
+     */
 
     return res.status(405).json({
       error: "Méthode non autorisée.",
