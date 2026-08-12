@@ -132,9 +132,19 @@ function getDate(item) {
     (col) => col.id === COLUMN_IDS.debut
   );
 
-  if (!column?.text) return "";
+  if (!column) return "";
 
-  const match = column.text.match(
+  try {
+    const value = column.value
+      ? JSON.parse(column.value)
+      : null;
+
+    if (value?.date) return value.date;
+  } catch (error) {
+    console.warn("Date Monday invalide:", column.value);
+  }
+
+  const match = (column.text || "").match(
     /^(\d{4}-\d{2}-\d{2})/
   );
 
@@ -142,26 +152,29 @@ function getDate(item) {
 }
 
 function getTime(item, columnId) {
-  const text = getColumn(item, columnId);
+  const column = item.column_values?.find(
+    (col) => col.id === columnId
+  );
 
-  if (!text) return "";
+  if (!column) return "";
 
-  const match = text.match(/(\d{2}:\d{2})$/);
+  try {
+    const value = column.value
+      ? JSON.parse(column.value)
+      : null;
 
-  if (!match) return "";
+    if (value?.time) {
+      return value.time.substring(0, 5);
+    }
+  } catch (error) {
+    console.warn("Heure Monday invalide:", column.value);
+  }
 
-  const [hours, minutes] = match[1]
-    .split(":")
-    .map(Number);
+  const match = (column.text || "").match(
+    /(\d{2}:\d{2})(?::\d{2})?$/
+  );
 
-  // Monday nous renvoie une heure décalée d'une heure.
-  // On retire donc 1 heure pour retrouver l'heure
-  // affichée dans notre programmation.
-
-  const totalMinutes =
-    hours * 60 + minutes - 60;
-
-  return minutesToTime(totalMinutes);
+  return match ? match[1] : "";
 }
 
 function timeToMinutes(time) {
