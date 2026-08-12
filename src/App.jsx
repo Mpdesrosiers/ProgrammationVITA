@@ -226,6 +226,9 @@ function App() {
   const [draggedGroup, setDraggedGroup] =
     useState(null);
 
+  const [dragPreview, setDragPreview] =
+    useState(null);
+
   const [saving, setSaving] =
     useState(false);
 
@@ -400,21 +403,27 @@ function App() {
 
   function handleDragStart(group) {
     setDraggedGroup(group);
+
+    setDragPreview({
+      time: group.debut,
+      zone: group.zone,
+    });
+
     setSaveMessage("");
   }
 
+  function handleDragEnd() {
+    setDraggedGroup(null);
+    setDragPreview(null);
+  }
+
   /*
-   * Détermine l'heure exacte correspondant
-   * à l'endroit où la souris est relâchée.
-   *
-   * Chaque case de 30 minutes fait 56 px.
-   *
-   * Même si une activité est déjà présente
-   * par-dessus la case, on utilise la position
-   * verticale réelle de la souris.
+   * Calcule l'heure en fonction de la position
+   * exacte de la souris dans la colonne.
    */
-  function getDropTime(event) {
-    const cell = event.currentTarget;
+  function getDropTimeFromMouse(event) {
+    const cell =
+      event.currentTarget;
 
     const rect =
       cell.getBoundingClientRect();
@@ -422,6 +431,11 @@ function App() {
     const y =
       event.clientY - rect.top;
 
+    /*
+     * Chaque ligne fait 56 px.
+     * On arrondit au créneau de 30 minutes
+     * le plus proche.
+     */
     const slotIndex =
       Math.floor(y / 56);
 
@@ -435,6 +449,23 @@ function App() {
     return minutesToTime(
       dropMinutes
     );
+  }
+
+  function handleDragOverCell(
+    event,
+    zone
+  ) {
+    event.preventDefault();
+
+    if (!draggedGroup) return;
+
+    const dropTime =
+      getDropTimeFromMouse(event);
+
+    setDragPreview({
+      time: dropTime,
+      zone,
+    });
   }
 
   async function handleDrop(
@@ -495,6 +526,8 @@ function App() {
     );
 
     setDraggedGroup(null);
+    setDragPreview(null);
+
     setSaving(true);
     setSaveMessage("");
 
@@ -567,10 +600,6 @@ function App() {
         "⚠️ Le changement est affiché, mais la sauvegarde dans Monday a échoué."
       );
 
-      /*
-       * Si la sauvegarde échoue,
-       * on recharge les données de Monday.
-       */
       try {
         const response =
           await fetch("/api/monday");
@@ -849,22 +878,32 @@ function App() {
                                 time
                           );
 
+                        const isPreview =
+                          draggedGroup &&
+                          dragPreview &&
+                          dragPreview.zone ===
+                            zone &&
+                          dragPreview.time ===
+                            time;
+
                         return (
 
                           <div
                             key={`${time}-${zone}`}
                             onDragOver={(
                               event
-                            ) => {
-                              event.preventDefault();
-                            }}
+                            ) =>
+                              handleDragOverCell(
+                                event,
+                                zone
+                              )
+                            }
                             onDrop={(
                               event
                             ) => {
-                              event.preventDefault();
 
                               const dropTime =
-                                getDropTime(
+                                getDropTimeFromMouse(
                                   event
                                 );
 
@@ -876,6 +915,24 @@ function App() {
                             }}
                             className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
                           >
+
+                            {isPreview && (
+                              <div
+                                className="pointer-events-none absolute left-1 right-1 top-1 z-10 rounded-md border-2 border-dashed border-white/70 bg-white/10"
+                                style={{
+                                  height:
+                                    draggedGroup
+                                      ? getGroupHeight(
+                                          draggedGroup
+                                        )
+                                      : 52,
+                                }}
+                              >
+                                <div className="px-2 py-1 text-[10px] font-semibold text-white/80">
+                                  {dragPreview.time}
+                                </div>
+                              </div>
+                            )}
 
                             {groupsHere.map(
                               (group) => {
@@ -898,20 +955,18 @@ function App() {
                                         group
                                       )
                                     }
-
-                                    /*
-                                     * IMPORTANT :
-                                     * Le bloc ne possède
-                                     * plus son propre onDrop.
-                                     *
-                                     * Le drop est donc géré
-                                     * par la cellule derrière,
-                                     * ce qui permet d'utiliser
-                                     * la position réelle de la
-                                     * souris.
-                                     */
-
-                                    className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing"
+                                    onDragEnd={
+                                      handleDragEnd
+                                    }
+                                    className={
+                                      "absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
+                                      (
+                                        draggedGroup?.id ===
+                                        group.id
+                                          ? "opacity-40"
+                                          : ""
+                                      )
+                                    }
                                     style={{
                                       height:
                                         getGroupHeight(
@@ -924,7 +979,6 @@ function App() {
                                       borderColor:
                                         groupColor.border,
                                     }}
-
                                     title={
                                       group.activities
                                         .map(
