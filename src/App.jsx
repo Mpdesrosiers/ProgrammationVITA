@@ -236,41 +236,9 @@ function App() {
     useState("");
 
   /*
-   * ------------------------------------------------
-   * ZOOM DU CALENDRIER
-   * ------------------------------------------------
-   *
-   * 100 % = 45 px par tranche de 30 minutes.
-   *
-   * 60 % = 27 px
-   * 70 % = 31.5 px
-   * 80 % = 36 px
-   * 90 % = 40.5 px
-   * 100 % = 45 px
-   * 110 % = 49.5 px
-   * 120 % = 54 px
-   */
-
-  const [zoom, setZoom] = useState(100);
-
-  const zoomScale = zoom / 100;
-
-  const rowHeight = 45 * zoomScale;
-
-  const timeColumnWidth = 80 * zoomScale;
-
-  const zoneColumnWidth = 180 * zoomScale;
-
-  const calendarFontSize =
-    Math.max(9, 12 * zoomScale);
-
-  const zoneHeaderFontSize =
-    Math.max(9, 14 * zoomScale);
-
-  /*
-   * ------------------------------------------------
-   * POPUP
-   * ------------------------------------------------
+   * --------------------------------------------------
+   * POPUP MODIFICATION
+   * --------------------------------------------------
    */
 
   const [editingItem, setEditingItem] =
@@ -292,9 +260,33 @@ function App() {
     useState("");
 
   /*
-   * ------------------------------------------------
+   * --------------------------------------------------
+   * POPUP CRÉATION
+   * --------------------------------------------------
+   */
+
+  const [creatingActivity, setCreatingActivity] =
+    useState(false);
+
+  const [createForm, setCreateForm] =
+    useState({
+      activite: "",
+      date: "",
+      debut: "",
+      fin: "",
+      zone: "",
+    });
+
+  const [createSaving, setCreateSaving] =
+    useState(false);
+
+  const [createError, setCreateError] =
+    useState("");
+
+  /*
+   * --------------------------------------------------
    * CHARGEMENT MONDAY
-   * ------------------------------------------------
+   * --------------------------------------------------
    */
 
   async function loadActivities() {
@@ -305,8 +297,7 @@ function App() {
         "/api/monday"
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok || data.error) {
         throw new Error(
@@ -317,8 +308,8 @@ function App() {
       }
 
       const items =
-        data.data?.boards?.[0]
-          ?.items_page?.items || [];
+        data.data?.boards?.[0]?.items_page
+          ?.items || [];
 
       const formattedActivities =
         items
@@ -405,9 +396,9 @@ function App() {
   }, []);
 
   /*
-   * ------------------------------------------------
+   * --------------------------------------------------
    * AUTO-SCROLL PENDANT LE DRAG
-   * ------------------------------------------------
+   * --------------------------------------------------
    */
 
   useEffect(() => {
@@ -420,7 +411,6 @@ function App() {
       const maxSpeed = 18;
 
       const mouseY = event.clientY;
-
       const windowHeight =
         window.innerHeight;
 
@@ -489,9 +479,9 @@ function App() {
   }, [draggedGroup]);
 
   /*
-   * ------------------------------------------------
+   * --------------------------------------------------
    * ACTIVITÉS DU JOUR
-   * ------------------------------------------------
+   * --------------------------------------------------
    */
 
   const selectedActivities =
@@ -506,9 +496,9 @@ function App() {
     ]);
 
   /*
-   * ------------------------------------------------
+   * --------------------------------------------------
    * GROUPES
-   * ------------------------------------------------
+   * --------------------------------------------------
    */
 
   const activityGroups =
@@ -555,22 +545,18 @@ function App() {
       end - start;
 
     /*
-     * 45 px à 100 %.
-     * Le zoom est appliqué directement
-     * à la hauteur réelle du bloc.
+     * 45 px par tranche de 30 minutes.
      */
     return Math.max(
-      (duration / 30) *
-        rowHeight -
-        4 * zoomScale,
-      34 * zoomScale
+      (duration / 30) * 45 - 4,
+      34
     );
   }
 
   /*
-   * ------------------------------------------------
+   * --------------------------------------------------
    * DRAG & DROP
-   * ------------------------------------------------
+   * --------------------------------------------------
    */
 
   function handleDragStart(group) {
@@ -623,16 +609,8 @@ function App() {
     const relativeY =
       clientY - rect.top;
 
-    /*
-     * On utilise maintenant la moitié
-     * de la hauteur réelle de la cellule.
-     *
-     * Donc ça fonctionne également
-     * lorsque le zoom est modifié.
-     */
     const half =
-      relativeY >=
-      rect.height / 2
+      relativeY >= 22.5
         ? 30
         : 0;
 
@@ -711,8 +689,7 @@ function App() {
 
     const draggedIds =
       draggedGroup.activities.map(
-        (activity) =>
-          activity.id
+        (activity) => activity.id
       );
 
     setActivities((current) =>
@@ -767,8 +744,7 @@ function App() {
                     endTime:
                       newEndTime,
 
-                    zone:
-                      newZone,
+                    zone: newZone,
                   }),
                 }
               );
@@ -813,14 +789,12 @@ function App() {
   }
 
   /*
-   * ------------------------------------------------
-   * OUVERTURE DU POPUP
-   * ------------------------------------------------
+   * --------------------------------------------------
+   * OUVERTURE DU POPUP DE MODIFICATION
+   * --------------------------------------------------
    */
 
-  function openActivityEditor(
-    activity
-  ) {
+  function openActivityEditor(activity) {
     setEditError("");
 
     setEditingItem({
@@ -833,16 +807,13 @@ function App() {
         activity.activite || "",
 
       date:
-        activity.date ||
-        selectedDay,
+        activity.date || selectedDay,
 
       debut:
-        activity.debut ||
-        "05:30",
+        activity.debut || "05:30",
 
       fin:
-        activity.fin ||
-        "06:00",
+        activity.fin || "06:00",
 
       zone:
         activity.zone ||
@@ -862,16 +833,13 @@ function App() {
       activite: "",
 
       date:
-        group.date ||
-        selectedDay,
+        group.date || selectedDay,
 
       debut:
-        group.debut ||
-        "05:30",
+        group.debut || "05:30",
 
       fin:
-        group.fin ||
-        "06:00",
+        group.fin || "06:00",
 
       zone:
         group.zone ||
@@ -887,9 +855,47 @@ function App() {
   }
 
   /*
-   * ------------------------------------------------
-   * SAUVEGARDE DU POPUP
-   * ------------------------------------------------
+   * --------------------------------------------------
+   * OUVERTURE DU POPUP D'AJOUT
+   * --------------------------------------------------
+   */
+
+  function openCreateEditor(
+    time = "05:30",
+    zone = zones[0]
+  ) {
+    setCreateError("");
+
+    const startMinutes =
+      timeToMinutes(time);
+
+    const endMinutes =
+      startMinutes + 30;
+
+    setCreateForm({
+      activite: "",
+      date: selectedDay,
+      debut: time,
+      fin: minutesToTime(
+        endMinutes
+      ),
+      zone: zone,
+    });
+
+    setCreatingActivity(true);
+  }
+
+  function closeCreateEditor() {
+    if (createSaving) return;
+
+    setCreatingActivity(false);
+    setCreateError("");
+  }
+
+  /*
+   * --------------------------------------------------
+   * SAUVEGARDE DU POPUP DE MODIFICATION
+   * --------------------------------------------------
    */
 
   async function handleSaveEditor() {
@@ -917,10 +923,7 @@ function App() {
         );
       }
 
-      if (
-        !newStart ||
-        !newEnd
-      ) {
+      if (!newStart || !newEnd) {
         throw new Error(
           "Veuillez choisir une heure de début et de fin."
         );
@@ -958,8 +961,7 @@ function App() {
               },
 
               body: JSON.stringify({
-                itemId:
-                  activity.id,
+                itemId: activity.id,
 
                 activite:
                   editForm.activite,
@@ -976,8 +978,7 @@ function App() {
                 endTime:
                   newEnd,
 
-                zone:
-                  newZone,
+                zone: newZone,
               }),
             }
           );
@@ -999,8 +1000,7 @@ function App() {
 
         setActivities((current) =>
           current.map((item) =>
-            item.id ===
-            activity.id
+            item.id === activity.id
               ? {
                   ...item,
 
@@ -1137,13 +1137,144 @@ function App() {
   }
 
   /*
-   * ------------------------------------------------
+   * --------------------------------------------------
+   * CRÉATION D'UNE ACTIVITÉ DANS MONDAY
+   * --------------------------------------------------
+   */
+
+  async function handleCreateActivity() {
+    setCreateError("");
+
+    const newName =
+      createForm.activite.trim();
+
+    const newDate =
+      createForm.date;
+
+    const newStart =
+      createForm.debut;
+
+    const newEnd =
+      createForm.fin;
+
+    const newZone =
+      createForm.zone;
+
+    if (!newName) {
+      setCreateError(
+        "Veuillez entrer le nom de l'activité."
+      );
+      return;
+    }
+
+    if (!newDate) {
+      setCreateError(
+        "Veuillez choisir une journée."
+      );
+      return;
+    }
+
+    if (!newStart || !newEnd) {
+      setCreateError(
+        "Veuillez choisir une heure de début et de fin."
+      );
+      return;
+    }
+
+    if (
+      timeToMinutes(newEnd) <=
+      timeToMinutes(newStart)
+    ) {
+      setCreateError(
+        "L'heure de fin doit être après l'heure de début."
+      );
+      return;
+    }
+
+    if (!newZone) {
+      setCreateError(
+        "Veuillez choisir une zone."
+      );
+      return;
+    }
+
+    setCreateSaving(true);
+
+    try {
+      const response =
+        await fetch("/api/monday", {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            activite: newName,
+
+            startDate: newDate,
+
+            startTime: newStart,
+
+            endDate: newDate,
+
+            endTime: newEnd,
+
+            zone: newZone,
+          }),
+        });
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        data.error
+      ) {
+        throw new Error(
+          data.details?.[0]?.message ||
+            data.error ||
+            "Impossible de créer l'activité dans Monday."
+        );
+      }
+
+      setCreatingActivity(false);
+
+      setSelectedDay(newDate);
+
+      setSaveMessage(
+        "✓ Activité ajoutée dans Monday"
+      );
+
+      /*
+       * On recharge les données depuis Monday
+       * afin que le nouvel item apparaisse
+       * avec toutes ses colonnes.
+       */
+      await loadActivities();
+    } catch (err) {
+      console.error(err);
+
+      setCreateError(
+        err.message ||
+          "Une erreur est survenue lors de la création."
+      );
+    } finally {
+      setCreateSaving(false);
+    }
+  }
+
+  /*
+   * --------------------------------------------------
    * RENDU
-   * ------------------------------------------------
+   * --------------------------------------------------
    */
 
   return (
     <div className="min-h-screen bg-[#151619] text-white">
+
+      {/* HEADER */}
 
       <header className="border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
 
@@ -1165,7 +1296,17 @@ function App() {
 
             <div className="flex items-center gap-3">
 
-              {/* JOURS */}
+              {/* BOUTON AJOUTER */}
+
+              <button
+                type="button"
+                onClick={() =>
+                  openCreateEditor()
+                }
+                className="rounded-md bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] transition hover:bg-[#9995e3]"
+              >
+                + Ajouter une activité
+              </button>
 
               <div className="flex gap-2">
 
@@ -1196,57 +1337,6 @@ function App() {
 
               </div>
 
-              {/* ZOOM */}
-
-              <div className="flex items-center rounded-lg border border-[#303137] bg-[#151619] p-1">
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setZoom(
-                      (current) =>
-                        Math.max(
-                          60,
-                          current - 10
-                        )
-                    )
-                  }
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-lg text-white transition hover:bg-[#303137]"
-                  title="Dézoomer"
-                >
-                  −
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setZoom(100)
-                  }
-                  className="min-w-[52px] rounded-md px-2 py-1.5 text-xs font-semibold text-[#a1a1a8] transition hover:bg-[#303137] hover:text-white"
-                  title="Réinitialiser le zoom"
-                >
-                  {zoom}%
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setZoom(
-                      (current) =>
-                        Math.min(
-                          120,
-                          current + 10
-                        )
-                    )
-                  }
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-lg text-white transition hover:bg-[#303137]"
-                  title="Zoomer"
-                >
-                  +
-                </button>
-
-              </div>
-
             </div>
 
           </div>
@@ -1254,6 +1344,8 @@ function App() {
         </div>
 
       </header>
+
+      {/* CALENDRIER */}
 
       <main className="overflow-x-auto p-6">
 
@@ -1317,354 +1409,304 @@ function App() {
                   <span className="text-[#777980]">
                     Clic = modifier •
                     Glissez-déposez =
-                    déplacer
+                    déplacer • Clic vide =
+                    ajouter
                   </span>
 
                 </div>
 
               </div>
 
-              {/* CALENDRIER */}
-
               <div
-                className="mx-auto"
+                className="mx-auto grid min-w-[1400px] max-w-[1800px]"
                 style={{
-                  minWidth: `${
-                    timeColumnWidth +
-                    zoneColumnWidth *
-                      zones.length
-                  }px`,
+                  gridTemplateColumns:
+                    "80px repeat(7, minmax(180px, 1fr))",
                 }}
               >
 
-                <div
-                  className="grid"
-                  style={{
-                    gridTemplateColumns:
-                      `${timeColumnWidth}px repeat(${zones.length}, ${zoneColumnWidth}px)`,
-                  }}
-                >
+                {/* EN-TÊTES DES ZONES */}
 
-                  {/* CELLULE VIDE AU-DESSUS DES HEURES */}
+                <div className="border-b border-r border-[#303137] bg-[#151619]" />
+
+                {zones.map((zone) => (
 
                   <div
-                    className="border-b border-r border-[#303137] bg-[#151619]"
-                    style={{
-                      height: `${60 * zoomScale}px`,
-                    }}
-                  />
-
-                  {/* NOMS DES ZONES */}
-
-                  {zones.map((zone) => (
+                    key={zone}
+                    className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
+                  >
 
                     <div
-                      key={zone}
-                      className="border-b border-r border-[#303137] bg-[#1b1c20] text-center"
+                      className="mx-auto mb-2 h-1 w-10 rounded-full"
                       style={{
-                        height: `${60 * zoomScale}px`,
-                        padding:
-                          `${12 * zoomScale}px ${8 * zoomScale}px`,
+                        backgroundColor:
+                          zoneColors[
+                            zone
+                          ].border,
                       }}
-                    >
+                    />
 
-                      <div
-                        className="mx-auto rounded-full"
-                        style={{
-                          width: `${40 * zoomScale}px`,
-                          height: `${4 * zoomScale}px`,
-                          marginBottom: `${8 * zoomScale}px`,
-                          backgroundColor:
-                            zoneColors[
-                              zone
-                            ].border,
-                        }}
-                      />
-
-                      <div
-                        className="font-semibold"
-                        style={{
-                          fontSize: `${zoneHeaderFontSize}px`,
-                        }}
-                      >
-                        {zone}
-                      </div>
-
+                    <div className="text-sm font-semibold">
+                      {zone}
                     </div>
 
-                  ))}
+                  </div>
 
-                  {/* CRÉNEAUX */}
+                ))}
 
-                  {times.map((time) => (
+                {/* CRÉNEAUX */}
 
-                    <React.Fragment
-                      key={time}
-                    >
+                {times.map((time) => (
 
-                      {/* HEURE */}
+                  <React.Fragment
+                    key={time}
+                  >
 
-                      <div
-                        className="flex items-center justify-end border-b border-r border-[#303137] bg-[#151619] text-[#a1a1a8]"
-                        style={{
-                          height: `${rowHeight}px`,
-                          paddingRight: `${12 * zoomScale}px`,
-                          fontSize: `${Math.max(
-                            9,
-                            12 * zoomScale
-                          )}px`,
-                        }}
-                      >
-                        {time}
-                      </div>
+                    {/* HEURE */}
 
-                      {/* ZONES */}
+                    <div className="flex h-[45px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
+                      {time}
+                    </div>
 
-                      {zones.map(
-                        (zone) => {
+                    {/* ZONES */}
 
-                          const groupsHere =
-                            activityGroups.filter(
-                              (group) =>
-                                group.zone ===
-                                  zone &&
-                                group.debut ===
-                                  time
-                            );
+                    {zones.map(
+                      (zone) => {
 
-                          const isPreview =
-                            draggedGroup &&
-                            dragPreview &&
-                            dragPreview.zone ===
-                              zone &&
-                            dragPreview.time ===
-                              time;
-
-                          return (
-
-                            <div
-                              key={`${time}-${zone}`}
-                              data-time={
+                        const groupsHere =
+                          activityGroups.filter(
+                            (group) =>
+                              group.zone ===
+                                zone &&
+                              group.debut ===
                                 time
-                              }
-                              data-zone={
-                                zone
-                              }
-                              onDragOver={(
-                                event
-                              ) => {
-                                event.preventDefault();
+                          );
 
-                                updateDragPreview(
-                                  event
+                        const isPreview =
+                          draggedGroup &&
+                          dragPreview &&
+                          dragPreview.zone ===
+                            zone &&
+                          dragPreview.time ===
+                            time;
+
+                        return (
+
+                          <div
+                            key={`${time}-${zone}`}
+                            data-time={time}
+                            data-zone={zone}
+                            onClick={() => {
+
+                              /*
+                               * Si la cellule est vide,
+                               * on ouvre le popup d'ajout.
+                               *
+                               * Si elle contient une activité,
+                               * le clic sur l'activité elle-même
+                               * est géré par son propre onClick.
+                               */
+
+                              if (
+                                groupsHere.length ===
+                                0
+                              ) {
+                                openCreateEditor(
+                                  time,
+                                  zone
                                 );
-                              }}
-                              onDrop={
-                                handleDrop
                               }
-                              className="relative border-b border-r border-[#303137] bg-[#151619]"
-                              style={{
-                                height: `${rowHeight}px`,
-                              }}
-                            >
+                            }}
+                            onDragOver={(
+                              event
+                            ) => {
+                              event.preventDefault();
 
-                              {/* APERÇU DE DROP */}
+                              updateDragPreview(
+                                event
+                              );
+                            }}
+                            onDrop={
+                              handleDrop
+                            }
+                            className={
+                              "relative h-[45px] border-b border-r border-[#303137] bg-[#151619] transition " +
+                              (
+                                groupsHere.length ===
+                                0
+                                  ? "cursor-pointer hover:bg-[#1d1e23]"
+                                  : ""
+                              )
+                            }
+                          >
 
-                              {isPreview && (
+                            {/* PREVIEW DRAG */}
 
-                                <div
-                                  className="pointer-events-none absolute left-1 right-1 top-1 z-[999] rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
-                                  style={{
-                                    height:
-                                      draggedGroup
-                                        ? getGroupHeight(
-                                            draggedGroup
-                                          )
-                                        : rowHeight -
-                                          4 *
-                                            zoomScale,
-                                  }}
-                                >
+                            {isPreview && (
 
-                                  <div
-                                    className="font-semibold text-white"
-                                    style={{
-                                      padding: `${4 * zoomScale}px ${8 * zoomScale}px`,
-                                      fontSize: `${Math.max(
-                                        8,
-                                        10 *
-                                          zoomScale
-                                      )}px`,
-                                    }}
-                                  >
-                                    {
-                                      dragPreview.time
-                                    }
-                                  </div>
+                              <div
+                                className="pointer-events-none absolute left-1 right-1 top-1 z-[999] rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
+                                style={{
+                                  height:
+                                    draggedGroup
+                                      ? getGroupHeight(
+                                          draggedGroup
+                                        )
+                                      : 40,
+                                }}
+                              >
 
+                                <div className="px-2 py-1 text-[10px] font-semibold text-white">
+                                  {dragPreview.time}
                                 </div>
 
-                              )}
+                              </div>
 
-                              {/* GROUPES */}
+                            )}
 
-                              {groupsHere.map(
-                                (group) => {
+                            {/* ACTIVITÉS */}
 
-                                  const groupColor =
-                                    getActivityColor(
-                                      group
-                                        .activities[0]
-                                    );
+                            {groupsHere.map(
+                              (group) => {
 
-                                  const isSingleActivity =
+                                const groupColor =
+                                  getActivityColor(
                                     group
-                                      .activities
-                                      .length ===
-                                    1;
+                                      .activities[0]
+                                  );
 
-                                  return (
+                                const isSingleActivity =
+                                  group
+                                    .activities
+                                    .length ===
+                                  1;
 
-                                    <div
-                                      key={
-                                        group.id
+                                return (
+
+                                  <div
+                                    key={
+                                      group.id
+                                    }
+                                    draggable
+                                    onDragStart={() =>
+                                      handleDragStart(
+                                        group
+                                      )
+                                    }
+                                    onDragEnd={
+                                      handleDragEnd
+                                    }
+                                    onClick={(
+                                      event
+                                    ) => {
+
+                                      event.stopPropagation();
+
+                                      if (
+                                        draggedGroup
+                                      ) {
+                                        return;
                                       }
-                                      draggable
-                                      onDragStart={() =>
-                                        handleDragStart(
-                                          group
-                                        )
-                                      }
-                                      onDragEnd={
-                                        handleDragEnd
-                                      }
-                                      onClick={(
-                                        event
-                                      ) => {
 
-                                        event.stopPropagation();
-
-                                        if (
-                                          draggedGroup
-                                        ) {
-                                          return;
-                                        }
-
-                                        if (
-                                          isSingleActivity
-                                        ) {
-                                          openActivityEditor(
-                                            group
-                                              .activities[0]
-                                          );
-                                        } else {
-                                          openGroupEditor(
-                                            group
-                                          );
-                                        }
-                                      }}
-                                      className={
-                                        "absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
-                                        (
-                                          draggedGroup?.id ===
-                                          group.id
-                                            ? "opacity-40"
-                                            : ""
-                                        )
-                                      }
-                                      style={{
-                                        height:
-                                          getGroupHeight(
-                                            group
-                                          ),
-
-                                        padding: `${8 * zoomScale}px`,
-
-                                        backgroundColor:
-                                          groupColor.background,
-
-                                        borderColor:
-                                          groupColor.border,
-
-                                        fontSize: `${calendarFontSize}px`,
-                                      }}
-                                      title={
+                                      if (
                                         isSingleActivity
-                                          ? "Cliquer pour modifier • Glisser pour déplacer"
-                                          : "Cliquer pour modifier le groupe • Glisser pour déplacer"
+                                      ) {
+                                        openActivityEditor(
+                                          group
+                                            .activities[0]
+                                        );
+                                      } else {
+                                        openGroupEditor(
+                                          group
+                                        );
                                       }
-                                    >
+                                    }}
+                                    className={
+                                      "absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
+                                      (
+                                        draggedGroup?.id ===
+                                        group.id
+                                          ? "opacity-40"
+                                          : ""
+                                      )
+                                    }
+                                    style={{
+                                      height:
+                                        getGroupHeight(
+                                          group
+                                        ),
 
-                                      <div
-                                        className="space-y-0.5"
-                                      >
+                                      backgroundColor:
+                                        groupColor.background,
 
-                                        {group.activities.map(
-                                          (
-                                            activity
-                                          ) => (
+                                      borderColor:
+                                        groupColor.border,
+                                    }}
+                                    title={
+                                      isSingleActivity
+                                        ? "Cliquer pour modifier • Glisser pour déplacer"
+                                        : "Cliquer pour modifier le groupe • Glisser pour déplacer"
+                                    }
+                                  >
 
-                                            <div
-                                              key={
-                                                activity.id
+                                    <div className="space-y-0.5">
+
+                                      {group.activities.map(
+                                        (
+                                          activity
+                                        ) => (
+
+                                          <div
+                                            key={
+                                              activity.id
+                                            }
+                                            className="flex items-start gap-1"
+                                          >
+
+                                            <span className="opacity-60">
+                                              •
+                                            </span>
+
+                                            <span>
+                                              {
+                                                activity.activite
                                               }
-                                              className="flex items-start gap-1"
-                                            >
+                                            </span>
 
-                                              <span className="opacity-60">
-                                                •
-                                              </span>
+                                          </div>
 
-                                              <span>
-                                                {
-                                                  activity.activite
-                                                }
-                                              </span>
-
-                                            </div>
-
-                                          )
-                                        )}
-
-                                      </div>
-
-                                      <div
-                                        className="font-medium opacity-70"
-                                        style={{
-                                          marginTop: `${4 * zoomScale}px`,
-                                          fontSize: `${Math.max(
-                                            8,
-                                            10 *
-                                              zoomScale
-                                          )}px`,
-                                        }}
-                                      >
-                                        {
-                                          group.debut
-                                        }{" "}
-                                        –{" "}
-                                        {
-                                          group.fin
-                                        }
-                                      </div>
+                                        )
+                                      )}
 
                                     </div>
 
-                                  );
-                                }
-                              )}
+                                    <div className="mt-1 text-[10px] font-medium opacity-70">
 
-                            </div>
+                                      {
+                                        group.debut
+                                      }{" "}
+                                      –{" "}
+                                      {
+                                        group.fin
+                                      }
 
-                          );
-                        }
-                      )}
+                                    </div>
 
-                    </React.Fragment>
+                                  </div>
 
-                  ))}
+                                );
+                              }
+                            )}
 
-                </div>
+                          </div>
+
+                        );
+                      }
+                    )}
+
+                  </React.Fragment>
+
+                ))}
 
               </div>
 
@@ -1674,7 +1716,9 @@ function App() {
 
       </main>
 
-      {/* POPUP D'ÉDITION */}
+      {/* --------------------------------------------------
+          POPUP D'ÉDITION
+          -------------------------------------------------- */}
 
       {editingItem && (
 
@@ -1754,8 +1798,7 @@ function App() {
                         (current) => ({
                           ...current,
                           activite:
-                            event
-                              .target
+                            event.target
                               .value,
                         })
                       )
@@ -1819,8 +1862,7 @@ function App() {
                       (current) => ({
                         ...current,
                         date:
-                          event
-                            .target
+                          event.target
                             .value,
                       })
                     )
@@ -1868,8 +1910,7 @@ function App() {
                         (current) => ({
                           ...current,
                           debut:
-                            event
-                              .target
+                            event.target
                               .value,
                         })
                       )
@@ -1911,8 +1952,7 @@ function App() {
                         (current) => ({
                           ...current,
                           fin:
-                            event
-                              .target
+                            event.target
                               .value,
                         })
                       )
@@ -1956,8 +1996,7 @@ function App() {
                       (current) => ({
                         ...current,
                         zone:
-                          event
-                            .target
+                          event.target
                             .value,
                       })
                     )
@@ -2019,6 +2058,329 @@ function App() {
                 {editSaving
                   ? "Enregistrement…"
                   : "Enregistrer"}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* --------------------------------------------------
+          POPUP AJOUT D'ACTIVITÉ
+          -------------------------------------------------- */}
+
+      {creatingActivity && (
+
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+          onMouseDown={(
+            event
+          ) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              closeCreateEditor();
+            }
+          }}
+        >
+
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
+
+            {/* TITRE */}
+
+            <div className="mb-6 flex items-start justify-between">
+
+              <div>
+
+                <div className="text-xs font-semibold uppercase tracking-wide text-[#8580d9]">
+                  Nouvelle activité
+                </div>
+
+                <h2 className="mt-1 text-xl font-semibold">
+                  Ajouter une activité
+                </h2>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  closeCreateEditor
+                }
+                disabled={
+                  createSaving
+                }
+                className="rounded-md px-2 py-1 text-xl text-[#85858c] hover:bg-[#303137] hover:text-white"
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="space-y-5">
+
+              {/* NOM */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Activité
+                </label>
+
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Nom de l'activité"
+                  value={
+                    createForm.activite
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setCreateForm(
+                      (current) => ({
+                        ...current,
+                        activite:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-[#606168] focus:border-[#8580d9]"
+                />
+
+              </div>
+
+              {/* JOURNÉE */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Journée
+                </label>
+
+                <select
+                  value={
+                    createForm.date
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setCreateForm(
+                      (current) => ({
+                        ...current,
+                        date:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+
+                  {days.map(
+                    (day) => (
+
+                      <option
+                        key={
+                          day.date
+                        }
+                        value={
+                          day.date
+                        }
+                      >
+                        {day.label}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              {/* HEURES */}
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                    Heure de début
+                  </label>
+
+                  <select
+                    value={
+                      createForm.debut
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setCreateForm(
+                        (current) => ({
+                          ...current,
+                          debut:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                  >
+
+                    {times.map(
+                      (time) => (
+
+                        <option
+                          key={time}
+                          value={time}
+                        >
+                          {time}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                    Heure de fin
+                  </label>
+
+                  <select
+                    value={
+                      createForm.fin
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setCreateForm(
+                        (current) => ({
+                          ...current,
+                          fin:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                  >
+
+                    {times.map(
+                      (time) => (
+
+                        <option
+                          key={time}
+                          value={time}
+                        >
+                          {time}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+              </div>
+
+              {/* ZONE */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Zone
+                </label>
+
+                <select
+                  value={
+                    createForm.zone
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setCreateForm(
+                      (current) => ({
+                        ...current,
+                        zone:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+
+                  {zones.map(
+                    (zone) => (
+
+                      <option
+                        key={zone}
+                        value={zone}
+                      >
+                        {zone}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              {/* ERREUR */}
+
+              {createError && (
+
+                <div className="rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
+                  {createError}
+                </div>
+
+              )}
+
+            </div>
+
+            {/* BOUTONS */}
+
+            <div className="mt-7 flex justify-end gap-3">
+
+              <button
+                type="button"
+                onClick={
+                  closeCreateEditor
+                }
+                disabled={
+                  createSaving
+                }
+                className="rounded-lg border border-[#3a3b42] bg-[#303137] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#404148] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleCreateActivity
+                }
+                disabled={
+                  createSaving
+                }
+                className="rounded-lg bg-[#8580d9] px-5 py-2.5 text-sm font-semibold text-[#151619] transition hover:bg-[#9995e3] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+
+                {createSaving
+                  ? "Création…"
+                  : "Ajouter l'activité"}
 
               </button>
 
