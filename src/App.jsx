@@ -88,21 +88,39 @@ function getColumn(item, columnId) {
   return column?.text || "";
 }
 
+/*
+ * IMPORTANT :
+ * On utilise le "text" de Monday pour la date.
+ *
+ * Le "value" contient parfois une date UTC différente.
+ * Exemple :
+ *
+ * text  → 2026-09-18 21:00
+ * value → 2026-09-19 00:00
+ *
+ * La vraie date de programmation est celle affichée
+ * dans "text".
+ */
 function getDate(item) {
   const column = item.column_values?.find(
     (col) => col.id === COLUMN_IDS.debut
   );
 
-  if (!column?.value) return "";
+  if (!column?.text) return "";
 
-  try {
-    const parsed = JSON.parse(column.value);
-    return parsed.date || "";
-  } catch {
-    return "";
-  }
+  const match = column.text.match(
+    /^(\d{4}-\d{2}-\d{2})/
+  );
+
+  return match ? match[1] : "";
 }
 
+/*
+ * Monday affiche l'heure de programmation avec un
+ * décalage d'une heure dans notre récupération.
+ *
+ * On retire donc 1 heure.
+ */
 function getTime(item, columnId) {
   const text = getColumn(item, columnId);
 
@@ -116,9 +134,6 @@ function getTime(item, columnId) {
     .split(":")
     .map(Number);
 
-  // Monday nous renvoie une heure décalée d'une heure.
-  // On retire donc 1 heure pour retrouver l'heure
-  // affichée dans notre programmation.
   const totalMinutes = hours * 60 + minutes - 60;
 
   return minutesToTime(totalMinutes);
@@ -127,12 +142,20 @@ function getTime(item, columnId) {
 function timeToMinutes(time) {
   if (!time) return 0;
 
-  const [hours, minutes] = time.split(":").map(Number);
+  const [hours, minutes] = time
+    .split(":")
+    .map(Number);
 
   return hours * 60 + minutes;
 }
 
 function minutesToTime(totalMinutes) {
+  /*
+   * Permet également de gérer minuit.
+   */
+  totalMinutes =
+    ((totalMinutes % 1440) + 1440) % 1440;
+
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
@@ -142,25 +165,33 @@ function minutesToTime(totalMinutes) {
 }
 
 function App() {
-  const [selectedDay, setSelectedDay] = useState(
-    "2026-09-18"
-  );
+  const [selectedDay, setSelectedDay] =
+    useState("2026-09-18");
 
-  const [activities, setActivities] = useState([]);
+  const [activities, setActivities] =
+    useState([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   const [draggedActivity, setDraggedActivity] =
     useState(null);
+
+  /*
+   * CHARGEMENT DES DONNÉES MONDAY
+   */
 
   useEffect(() => {
     async function loadActivities() {
       try {
         setLoading(true);
 
-        const response = await fetch("/api/monday");
+        const response = await fetch(
+          "/api/monday"
+        );
 
         const data = await response.json();
 
@@ -173,75 +204,79 @@ function App() {
         }
 
         const items =
-          data.data?.boards?.[0]?.items_page?.items ||
-          [];
+          data.data?.boards?.[0]?.items_page
+            ?.items || [];
 
-        const formattedActivities = items
-          .map((item) => ({
-            id: item.id,
+        const formattedActivities =
+          items
+            .map((item) => ({
+              id: item.id,
 
-            mondayId: item.name,
+              mondayId: item.name,
 
-            activite: getColumn(
-              item,
-              COLUMN_IDS.activite
-            ),
+              activite: getColumn(
+                item,
+                COLUMN_IDS.activite
+              ),
 
-            date: getDate(item),
+              date: getDate(item),
 
-            debut: getTime(
-              item,
-              COLUMN_IDS.debut
-            ),
+              debut: getTime(
+                item,
+                COLUMN_IDS.debut
+              ),
 
-            fin: getTime(
-              item,
-              COLUMN_IDS.fin
-            ),
+              fin: getTime(
+                item,
+                COLUMN_IDS.fin
+              ),
 
-            volet: getColumn(
-              item,
-              COLUMN_IDS.volet
-            ),
+              volet: getColumn(
+                item,
+                COLUMN_IDS.volet
+              ),
 
-            zone: getColumn(
-              item,
-              COLUMN_IDS.zone
-            ),
+              zone: getColumn(
+                item,
+                COLUMN_IDS.zone
+              ),
 
-            mode: getColumn(
-              item,
-              COLUMN_IDS.mode
-            ),
+              mode: getColumn(
+                item,
+                COLUMN_IDS.mode
+              ),
 
-            status: getColumn(
-              item,
-              COLUMN_IDS.status
-            ),
+              status: getColumn(
+                item,
+                COLUMN_IDS.status
+              ),
 
-            affichage: getColumn(
-              item,
-              COLUMN_IDS.affichage
-            ),
+              affichage: getColumn(
+                item,
+                COLUMN_IDS.affichage
+              ),
 
-            categorieCouleur: getColumn(
-              item,
-              COLUMN_IDS.categorieCouleur
-            ),
+              categorieCouleur:
+                getColumn(
+                  item,
+                  COLUMN_IDS.categorieCouleur
+                ),
 
-            notes: getColumn(
-              item,
-              COLUMN_IDS.notes
-            ),
-          }))
-          .filter(
-            (activity) =>
-              activity.activite &&
-              activity.debut &&
-              activity.fin
-          );
+              notes: getColumn(
+                item,
+                COLUMN_IDS.notes
+              ),
+            }))
+            .filter(
+              (activity) =>
+                activity.activite &&
+                activity.debut &&
+                activity.fin
+            );
 
-        setActivities(formattedActivities);
+        setActivities(
+          formattedActivities
+        );
 
         setError("");
       } catch (err) {
@@ -256,18 +291,38 @@ function App() {
     loadActivities();
   }, []);
 
-  const selectedActivities = useMemo(() => {
-    return activities.filter(
-      (activity) => activity.date === selectedDay
-    );
-  }, [activities, selectedDay]);
+  /*
+   * ACTIVITÉS DU JOUR SÉLECTIONNÉ
+   */
 
-  function getActivityHeight(activity) {
-    const start = timeToMinutes(activity.debut);
+  const selectedActivities =
+    useMemo(() => {
+      return activities.filter(
+        (activity) =>
+          activity.date === selectedDay
+      );
+    }, [
+      activities,
+      selectedDay,
+    ]);
 
-    const end = timeToMinutes(activity.fin);
+  /*
+   * HAUTEUR DU BLOC
+   *
+   * 30 minutes = 56 px
+   */
 
-    const duration = end - start;
+  function getActivityHeight(
+    activity
+  ) {
+    const start =
+      timeToMinutes(activity.debut);
+
+    const end =
+      timeToMinutes(activity.fin);
+
+    const duration =
+      end - start;
 
     return Math.max(
       (duration / 30) * 56,
@@ -275,37 +330,59 @@ function App() {
     );
   }
 
-  function handleDragStart(activity) {
+  /*
+   * DRAG & DROP
+   */
+
+  function handleDragStart(
+    activity
+  ) {
     setDraggedActivity(activity);
   }
 
-  function handleDrop(event, newTime, newZone) {
+  function handleDrop(
+    event,
+    newTime,
+    newZone
+  ) {
     event.preventDefault();
 
     if (!draggedActivity) return;
 
-    const oldStart = timeToMinutes(
-      draggedActivity.debut
-    );
+    const oldStart =
+      timeToMinutes(
+        draggedActivity.debut
+      );
 
-    const oldEnd = timeToMinutes(
-      draggedActivity.fin
-    );
+    const oldEnd =
+      timeToMinutes(
+        draggedActivity.fin
+      );
 
-    const duration = oldEnd - oldStart;
+    const duration =
+      oldEnd - oldStart;
 
-    const newStart = timeToMinutes(newTime);
+    const newStart =
+      timeToMinutes(newTime);
 
-    const newEnd = newStart + duration;
+    const newEnd =
+      newStart + duration;
 
     setActivities((current) =>
       current.map((activity) =>
-        activity.id === draggedActivity.id
+        activity.id ===
+        draggedActivity.id
           ? {
               ...activity,
               zone: newZone,
-              debut: minutesToTime(newStart),
-              fin: minutesToTime(newEnd),
+              debut:
+                minutesToTime(
+                  newStart
+                ),
+              fin:
+                minutesToTime(
+                  newEnd
+                ),
             }
           : activity
       )
@@ -337,6 +414,8 @@ function App() {
 
             </div>
 
+            {/* JOURNÉES */}
+
             <div className="flex gap-2">
 
               {days.map((day) => (
@@ -345,12 +424,15 @@ function App() {
                   key={day.date}
                   type="button"
                   onClick={() =>
-                    setSelectedDay(day.date)
+                    setSelectedDay(
+                      day.date
+                    )
                   }
                   className={
                     "rounded-md px-5 py-2 text-sm font-semibold transition " +
                     (
-                      selectedDay === day.date
+                      selectedDay ===
+                      day.date
                         ? "bg-[#8580d9] text-[#151619]"
                         : "bg-[#303137] text-white hover:bg-[#404148]"
                     )
@@ -397,160 +479,194 @@ function App() {
 
         )}
 
-        {!loading && !error && (
+        {!loading &&
+          !error && (
 
-          <>
+            <>
 
-            <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
+              <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
 
-              <div className="text-[#8580d9]">
-                {selectedActivities.length} activité
-                {selectedActivities.length !== 1
-                  ? "s"
-                  : ""}
-              </div>
+                <div className="text-[#8580d9]">
 
-              <div className="text-[#777980]">
-                Glissez-déposez une activité pour la déplacer
-              </div>
-
-            </div>
-
-            <div
-              className="mx-auto grid min-w-[1400px] max-w-[1800px]"
-              style={{
-                gridTemplateColumns:
-                  "80px repeat(7, minmax(180px, 1fr))",
-              }}
-            >
-
-              {/* COIN */}
-
-              <div className="border-b border-r border-[#303137] bg-[#151619]" />
-
-              {/* ZONES */}
-
-              {zones.map((zone) => (
-
-                <div
-                  key={zone}
-                  className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
-                >
-
-                  <div
-                    className="mx-auto mb-2 h-1 w-10 rounded-full"
-                    style={{
-                      backgroundColor:
-                        zoneColors[zone],
-                    }}
-                  />
-
-                  <div className="text-sm font-semibold">
-                    {zone}
-                  </div>
+                  {
+                    selectedActivities.length
+                  }{" "}
+                  activité
+                  {selectedActivities.length !==
+                  1
+                    ? "s"
+                    : ""}
 
                 </div>
 
-              ))}
+                <div className="text-[#777980]">
+                  Glissez-déposez une
+                  activité pour la
+                  déplacer
+                </div>
 
-              {/* CALENDRIER */}
+              </div>
 
-              {times.map((time) => (
+              <div
+                className="mx-auto grid min-w-[1400px] max-w-[1800px]"
+                style={{
+                  gridTemplateColumns:
+                    "80px repeat(7, minmax(180px, 1fr))",
+                }}
+              >
 
-                <React.Fragment key={time}>
+                {/* COIN */}
 
-                  {/* HEURE */}
+                <div className="border-b border-r border-[#303137] bg-[#151619]" />
 
-                  <div className="flex h-14 items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
-                    {time}
+                {/* ZONES */}
+
+                {zones.map((zone) => (
+
+                  <div
+                    key={zone}
+                    className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
+                  >
+
+                    <div
+                      className="mx-auto mb-2 h-1 w-10 rounded-full"
+                      style={{
+                        backgroundColor:
+                          zoneColors[
+                            zone
+                          ],
+                      }}
+                    />
+
+                    <div className="text-sm font-semibold">
+                      {zone}
+                    </div>
+
                   </div>
 
-                  {/* ZONES */}
+                ))}
 
-                  {zones.map((zone) => {
+                {/* LIGNES HORAIRES */}
 
-                    const activitiesHere =
-                      selectedActivities.filter(
-                        (activity) =>
-                          activity.zone === zone &&
-                          activity.debut === time
-                      );
+                {times.map((time) => (
 
-                    return (
+                  <React.Fragment
+                    key={time}
+                  >
 
-                      <div
-                        key={`${time}-${zone}`}
-                        onDragOver={(event) =>
-                          event.preventDefault()
-                        }
-                        onDrop={(event) =>
-                          handleDrop(
-                            event,
-                            time,
-                            zone
-                          )
-                        }
-                        className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
-                      >
+                    {/* HEURE */}
 
-                        {activitiesHere.map(
-                          (activity) => (
+                    <div className="flex h-14 items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
+                      {time}
+                    </div>
 
-                            <div
-                              key={activity.id}
-                              draggable
-                              onDragStart={() =>
-                                handleDragStart(
-                                  activity
-                                )
-                              }
-                              className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md p-2 text-xs font-semibold text-white shadow-lg active:cursor-grabbing"
-                              style={{
-                                height:
-                                  getActivityHeight(
-                                    activity
-                                  ),
-                                backgroundColor:
-                                  zoneColors[
-                                    activity.zone
-                                  ] ||
-                                  "#8580d9",
-                              }}
-                              title={
-                                `${activity.activite}\n` +
-                                `${activity.debut} – ${activity.fin}`
-                              }
-                            >
+                    {/* ZONES */}
 
-                              <div>
-                                {activity.activite}
-                              </div>
+                    {zones.map(
+                      (zone) => {
 
-                              <div className="mt-1 text-[10px] font-normal opacity-80">
-                                {activity.debut} –{" "}
-                                {activity.fin}
-                              </div>
+                        const activitiesHere =
+                          selectedActivities.filter(
+                            (
+                              activity
+                            ) =>
+                              activity.zone ===
+                                zone &&
+                              activity.debut ===
+                                time
+                          );
 
-                            </div>
+                        return (
 
-                          )
-                        )}
+                          <div
+                            key={`${time}-${zone}`}
+                            onDragOver={(
+                              event
+                            ) =>
+                              event.preventDefault()
+                            }
+                            onDrop={(
+                              event
+                            ) =>
+                              handleDrop(
+                                event,
+                                time,
+                                zone
+                              )
+                            }
+                            className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
+                          >
 
-                      </div>
+                            {activitiesHere.map(
+                              (
+                                activity
+                              ) => (
 
-                    );
+                                <div
+                                  key={
+                                    activity.id
+                                  }
+                                  draggable
+                                  onDragStart={() =>
+                                    handleDragStart(
+                                      activity
+                                    )
+                                  }
+                                  className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md p-2 text-xs font-semibold text-white shadow-lg active:cursor-grabbing"
+                                  style={{
+                                    height:
+                                      getActivityHeight(
+                                        activity
+                                      ),
+                                    backgroundColor:
+                                      zoneColors[
+                                        activity
+                                          .zone
+                                      ] ||
+                                      "#8580d9",
+                                  }}
+                                  title={
+                                    `${activity.activite}\n` +
+                                    `${activity.debut} – ${activity.fin}`
+                                  }
+                                >
 
-                  })}
+                                  <div>
+                                    {
+                                      activity.activite
+                                    }
+                                  </div>
 
-                </React.Fragment>
+                                  <div className="mt-1 text-[10px] font-normal opacity-80">
+                                    {
+                                      activity.debut
+                                    }{" "}
+                                    –{" "}
+                                    {
+                                      activity.fin
+                                    }
+                                  </div>
 
-              ))}
+                                </div>
 
-            </div>
+                              )
+                            )}
 
-          </>
+                          </div>
 
-        )}
+                        );
+                      }
+                    )}
+
+                  </React.Fragment>
+
+                ))}
+
+              </div>
+
+            </>
+
+          )}
 
       </main>
 
