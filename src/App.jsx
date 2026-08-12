@@ -403,6 +403,40 @@ function App() {
     setSaveMessage("");
   }
 
+  /*
+   * Détermine l'heure exacte correspondant
+   * à l'endroit où la souris est relâchée.
+   *
+   * Chaque case de 30 minutes fait 56 px.
+   *
+   * Même si une activité est déjà présente
+   * par-dessus la case, on utilise la position
+   * verticale réelle de la souris.
+   */
+  function getDropTime(event) {
+    const cell = event.currentTarget;
+
+    const rect =
+      cell.getBoundingClientRect();
+
+    const y =
+      event.clientY - rect.top;
+
+    const slotIndex =
+      Math.floor(y / 56);
+
+    const gridStart =
+      timeToMinutes("05:30");
+
+    const dropMinutes =
+      gridStart +
+      slotIndex * 30;
+
+    return minutesToTime(
+      dropMinutes
+    );
+  }
+
   async function handleDrop(
     event,
     newTime,
@@ -466,13 +500,8 @@ function App() {
 
     try {
       /*
-       * OPTIMISATION :
-       *
-       * Avant, les activités étaient envoyées
-       * une par une avec await dans une boucle.
-       *
-       * Maintenant, toutes les requêtes partent
-       * en même temps avec Promise.all().
+       * Toutes les activités du groupe
+       * sont sauvegardées simultanément.
        */
       const saveRequests =
         draggedGroup.activities.map(
@@ -524,10 +553,6 @@ function App() {
           }
         );
 
-      /*
-       * Toutes les activités sont sauvegardées
-       * simultanément.
-       */
       await Promise.all(
         saveRequests
       );
@@ -543,9 +568,8 @@ function App() {
       );
 
       /*
-       * On recharge les données de Monday
-       * pour remettre l'affichage dans l'état
-       * réellement enregistré.
+       * Si la sauvegarde échoue,
+       * on recharge les données de Monday.
        */
       try {
         const response =
@@ -831,18 +855,25 @@ function App() {
                             key={`${time}-${zone}`}
                             onDragOver={(
                               event
-                            ) =>
-                              event.preventDefault()
-                            }
+                            ) => {
+                              event.preventDefault();
+                            }}
                             onDrop={(
                               event
-                            ) =>
+                            ) => {
+                              event.preventDefault();
+
+                              const dropTime =
+                                getDropTime(
+                                  event
+                                );
+
                               handleDrop(
                                 event,
-                                time,
+                                dropTime,
                                 zone
-                              )
-                            }
+                              );
+                            }}
                             className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
                           >
 
@@ -867,6 +898,19 @@ function App() {
                                         group
                                       )
                                     }
+
+                                    /*
+                                     * IMPORTANT :
+                                     * Le bloc ne possède
+                                     * plus son propre onDrop.
+                                     *
+                                     * Le drop est donc géré
+                                     * par la cellule derrière,
+                                     * ce qui permet d'utiliser
+                                     * la position réelle de la
+                                     * souris.
+                                     */
+
                                     className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing"
                                     style={{
                                       height:
@@ -880,6 +924,7 @@ function App() {
                                       borderColor:
                                         groupColor.border,
                                     }}
+
                                     title={
                                       group.activities
                                         .map(
