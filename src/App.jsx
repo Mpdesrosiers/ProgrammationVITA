@@ -128,9 +128,7 @@ const COLUMN_IDS = {
   fin: "date_mm63gzbs",
   volet: "dropdown_mm63ffn6",
   zone: "color_mm63vn4d",
-  mode: "dropdown_mm63xxam",
   status: "status",
-  affichage: "text_mm5zme5q",
   categorieCouleur: "color_mm63ahs6",
   notes: "text_mm5z2k1c",
 };
@@ -294,9 +292,7 @@ function App() {
       fin: "",
       volet: "",
       zone: "",
-      mode: "",
       status: "",
-      affichage: "",
       categorieCouleur: "",
       notes: "",
     });
@@ -384,19 +380,9 @@ function App() {
               COLUMN_IDS.zone
             ),
 
-            mode: getColumn(
-              item,
-              COLUMN_IDS.mode
-            ),
-
             status: getColumn(
               item,
               COLUMN_IDS.status
-            ),
-
-            affichage: getColumn(
-              item,
-              COLUMN_IDS.affichage
             ),
 
             categorieCouleur:
@@ -923,9 +909,7 @@ function App() {
       ),
       volet: "",
       zone: zone,
-      mode: "",
       status: "",
-      affichage: "",
       categorieCouleur: "",
       notes: "",
     });
@@ -1363,9 +1347,7 @@ function App() {
               )?.mondayLabel || "",
             volet: createForm.volet,
             zone: newZone,
-            mode: createForm.mode,
             status: createForm.status,
-            affichage: createForm.affichage,
             categorieCouleur:
               createForm.categorieCouleur,
             notes: createForm.notes,
@@ -2528,36 +2510,6 @@ function App() {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                  Mode
-                </label>
-                <select
-                  value={createForm.mode}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      mode: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                >
-                  <option value="">
-                    Sélectionner…
-                  </option>
-                  {(mondayColumnOptions["dropdown_mm63xxam"]?.options || []).map(
-                    (option) => (
-                      <option
-                        key={option.id}
-                        value={option.label}
-                      >
-                        {option.label}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
                   Statut
                 </label>
                 <select
@@ -2584,23 +2536,6 @@ function App() {
                     )
                   )}
                 </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
-                  Affichage
-                </label>
-                <input
-                  type="text"
-                  value={createForm.affichage}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      affichage: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
-                />
               </div>
 
               <div>
