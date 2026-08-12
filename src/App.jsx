@@ -770,8 +770,10 @@ function App() {
         saveRequests
       );
 
+      await loadActivities();
+
       setSaveMessage(
-        "✓ Modification enregistrée dans Monday"
+        "✓ Modification confirmée dans Monday"
       );
     } catch (err) {
       console.error(err);
@@ -1119,11 +1121,15 @@ function App() {
 
       setSelectedDay(newDate);
 
+      await loadActivities();
+
       setSaveMessage(
-        "✓ Modification enregistrée dans Monday"
+        "✓ Modification confirmée dans Monday"
       );
     } catch (err) {
       console.error(err);
+
+      await loadActivities();
 
       setEditError(
         err.message ||
