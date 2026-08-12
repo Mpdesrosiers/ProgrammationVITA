@@ -311,6 +311,9 @@ function App() {
   const [creatingActivity, setCreatingActivity] =
     useState(false);
 
+  const [duplicatingActivity, setDuplicatingActivity] =
+    useState(null);
+
   const [createForm, setCreateForm] =
     useState({
       activite: "",
@@ -1217,6 +1220,7 @@ function App() {
     zone = zones[0]
   ) {
     setCreateError("");
+    setDuplicatingActivity(null);
 
     const startMinutes =
       timeToMinutes(time);
@@ -1245,6 +1249,7 @@ function App() {
     if (createSaving) return;
 
     setCreatingActivity(false);
+    setDuplicatingActivity(null);
     setCreateError("");
   }
 
@@ -1613,75 +1618,28 @@ function App() {
     }
   }
 
-  async function handleDuplicateActivity(
+  function handleDuplicateActivity(
     activity
   ) {
     setContextMenu(null);
-    setSaving(true);
-    setSaveMessage("Duplication…");
+    setCreateError("");
+    setDuplicatingActivity(activity);
 
-    try {
-      const response = await fetch(
-        "/api/monday",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            activite:
-              `${activity.activite} - Copie`,
-            startDate: activity.date,
-            startTime: activity.debut,
-            endDate: activity.date,
-            endTime: activity.fin,
-            jour:
-              days.find(
-                (day) =>
-                  day.date === activity.date
-              )?.mondayLabel || "",
-            volet: activity.volet,
-            zone: activity.zone,
-            status: activity.status,
-            categorieCouleur:
-              activity.categorieCouleur,
-            notes: activity.notes,
-          }),
-        }
-      );
+    setCreateForm({
+      activite:
+        `${activity.activite} - Copie`,
+      date: activity.date,
+      debut: activity.debut,
+      fin: activity.fin,
+      volet: activity.volet || "",
+      zone: activity.zone || zones[0],
+      status: activity.status || "",
+      categorieCouleur:
+        activity.categorieCouleur || "",
+      notes: activity.notes || "",
+    });
 
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(
-          (
-            Array.isArray(data.details)
-              ? data.details[0]?.message
-              : data.details
-          ) ||
-            data.error ||
-            "Impossible de dupliquer l'activité."
-        );
-      }
-
-      addHistory({
-        label:
-          `Duplication de « ${activity.activite} »`,
-      });
-
-      await loadActivities(true);
-      setSaveMessage(
-        "✓ Activité dupliquée dans Monday"
-      );
-    } catch (err) {
-      console.error(err);
-      setSaveMessage(
-        `⚠️ ${err.message}`
-      );
-    } finally {
-      setSaving(false);
-    }
+    setCreatingActivity(true);
   }
 
   /*
@@ -1809,8 +1767,12 @@ function App() {
       );
 
       addHistory({
-        label: `Ajout de « ${newName} »`,
+        label: duplicatingActivity
+          ? `Duplication de « ${duplicatingActivity.activite} »`
+          : `Ajout de « ${newName} »`,
       });
+
+      setDuplicatingActivity(null);
 
       await loadActivities(true);
     } catch (err) {
@@ -2904,11 +2866,15 @@ function App() {
               <div>
 
                 <div className="text-xs font-semibold uppercase tracking-wide text-[#8580d9]">
-                  Nouvelle activité
+                  {duplicatingActivity
+                    ? "Copie d'une activité"
+                    : "Nouvelle activité"}
                 </div>
 
                 <h2 className="mt-1 text-xl font-semibold">
-                  Ajouter une activité
+                  {duplicatingActivity
+                    ? "Modifier la copie avant de l'ajouter"
+                    : "Ajouter une activité"}
                 </h2>
 
               </div>
