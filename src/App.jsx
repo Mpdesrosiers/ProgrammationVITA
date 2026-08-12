@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const zones = [
   "Terrain synthétique",
@@ -260,6 +260,16 @@ function App() {
   const [saving, setSaving] =
     useState(false);
 
+  const saveQueueRef = useRef(
+    Promise.resolve()
+  );
+
+  const pendingSavesRef = useRef(0);
+
+  const latestUpdatedAtRef = useRef(
+    new Map()
+  );
+
   const [saveMessage, setSaveMessage] =
     useState("");
 
@@ -474,6 +484,16 @@ function App() {
         formattedActivities
       );
 
+      latestUpdatedAtRef.current =
+        new Map(
+          formattedActivities.map(
+            (activity) => [
+              activity.id,
+              activity.updatedAt,
+            ]
+          )
+        );
+
       setLastSyncedAt(new Date());
 
       setError("");
@@ -485,6 +505,84 @@ function App() {
         setLoading(false);
       }
     }
+  }
+
+  function queueMondaySave(
+    activity,
+    changes
+  ) {
+    pendingSavesRef.current += 1;
+    setSaving(true);
+    setSaveMessage(
+      `Sauvegarde (${pendingSavesRef.current})…`
+    );
+
+    const task = async () => {
+      const response = await fetch(
+        "/api/monday",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            itemId: activity.id,
+            expectedUpdatedAt:
+              latestUpdatedAtRef.current.get(
+                activity.id
+              ) || activity.updatedAt,
+            ...changes,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(
+          data.error ||
+            data.details ||
+            "Erreur lors de la sauvegarde dans Monday."
+        );
+      }
+
+      const updatedAt =
+        data.mondayItem?.updated_at;
+
+      if (updatedAt) {
+        latestUpdatedAtRef.current.set(
+          activity.id,
+          updatedAt
+        );
+      }
+
+      return data;
+    };
+
+    const result = saveQueueRef.current.then(
+      task,
+      task
+    );
+
+    saveQueueRef.current = result.catch(
+      () => {}
+    );
+
+    return result.finally(() => {
+      pendingSavesRef.current -= 1;
+
+      if (pendingSavesRef.current === 0) {
+        setSaving(false);
+        setSaveMessage(
+          "✓ Toutes les modifications sont enregistrées"
+        );
+      } else {
+        setSaveMessage(
+          `Sauvegarde (${pendingSavesRef.current})…`
+        );
+      }
+    });
   }
 
   useEffect(() => {
@@ -562,7 +660,7 @@ function App() {
 
     const interval = setInterval(
       refresh,
-      10000
+      5000
     );
 
     document.addEventListener(
@@ -1149,68 +1247,20 @@ function App() {
     setDraggedGroup(null);
     setDragPreview(null);
 
-    setSaving(true);
-    setSaveMessage("");
-
     try {
       const saveRequests =
         draggedGroup.activities.map(
-          async (activity) => {
-            const response =
-              await fetch(
-                "/api/monday",
-                {
-                  method: "PUT",
-
-                  headers: {
-                    "Content-Type":
-                      "application/json",
-                  },
-
-                  body: JSON.stringify({
-                    itemId:
-                      activity.id,
-
-                    expectedUpdatedAt:
-                      activity.updatedAt,
-
-                    startDate:
-                      activity.date,
-
-                    startTime:
-                      newStartTime,
-
-                    endDate:
-                      activity.date,
-
-                    endTime:
-                      newEndTime,
-
-                    zone: newZone,
-                  }),
-                }
-              );
-
-            const data =
-              await response.json();
-
-            if (
-              !response.ok ||
-              data.error
-            ) {
-              throw new Error(
-                (
-                  Array.isArray(data.details)
-                    ? data.details[0]?.message
-                    : data.details
-                ) ||
-                  data.error ||
-                  "Erreur lors de la sauvegarde dans Monday."
-              );
-            }
-
-            return data;
-          }
+          (activity) =>
+            queueMondaySave(
+              activity,
+              {
+                startDate: activity.date,
+                startTime: newStartTime,
+                endDate: activity.date,
+                endTime: newEndTime,
+                zone: newZone,
+              }
+            )
         );
 
       await Promise.all(
@@ -1225,21 +1275,14 @@ function App() {
           ),
       });
 
-      await loadActivities(true);
-
-      setSaveMessage(
-        "✓ Modification confirmée dans Monday"
-      );
     } catch (err) {
       console.error(err);
 
       setSaveMessage(
-        "⚠️ Le changement est affiché, mais la sauvegarde dans Monday a échoué."
+        `⚠️ ${err.message}`
       );
 
       await loadActivities(true);
-    } finally {
-      setSaving(false);
     }
   }
 
