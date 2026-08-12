@@ -526,7 +526,7 @@ export default async function handler(req, res) {
        * Ajouter les informations.
        */
 
-      const columnValues = {
+      const coreColumnValues = {
         [COLUMN_IDS.activite]:
           activite.trim(),
 
@@ -545,81 +545,112 @@ export default async function handler(req, res) {
         },
       };
 
-      if (jour?.trim()) {
-        columnValues[COLUMN_IDS.jour] = {
-          labels: [jour.trim()],
-        };
-      }
-
-      if (volet?.trim()) {
-        columnValues[COLUMN_IDS.volet] = {
-          labels: [volet.trim()],
-        };
-      }
-
-      if (mode?.trim()) {
-        columnValues[COLUMN_IDS.mode] = {
-          labels: [mode.trim()],
-        };
-      }
-
-      if (status?.trim()) {
-        columnValues[COLUMN_IDS.status] = {
-          label: status.trim(),
-        };
-      }
-
-      if (affichage?.trim()) {
-        columnValues[COLUMN_IDS.affichage] =
-          affichage.trim();
-      }
-
-      if (categorieCouleur?.trim()) {
-        columnValues[
-          COLUMN_IDS.categorieCouleur
-        ] = {
-          label: categorieCouleur.trim(),
-        };
-      }
-
-      if (notes?.trim()) {
-        columnValues[COLUMN_IDS.notes] =
-          notes.trim();
-      }
-
-      const updateMutation = `
-        mutation {
-          change_multiple_column_values(
-            item_id: ${Number(
-              newItem.id
-            )}
-            board_id: ${Number(
-              BOARD_ID
-            )}
-            column_values: ${JSON.stringify(
-              JSON.stringify(
-                columnValues
-              )
-            )}
-          ) {
-            id
-            name
-          }
-        }
-      `;
-
-      const updateData =
-        await mondayRequest(
-          updateMutation
-        );
-
-      if (
-        !updateData.data
-          ?.change_multiple_column_values
-          ?.id
+      async function updateCreatedItem(
+        values,
+        fieldName
       ) {
-        throw new Error(
-          "Monday n'a pas confirmé l'ajout des informations de l'activité."
+        const mutation = `
+          mutation {
+            change_multiple_column_values(
+              item_id: ${Number(newItem.id)}
+              board_id: ${Number(BOARD_ID)}
+              column_values: ${JSON.stringify(
+                JSON.stringify(values)
+              )}
+            ) {
+              id
+            }
+          }
+        `;
+
+        try {
+          const result =
+            await mondayRequest(mutation);
+
+          if (
+            !result.data
+              ?.change_multiple_column_values
+              ?.id
+          ) {
+            throw new Error(
+              "Monday n'a pas confirmé la modification."
+            );
+          }
+        } catch (error) {
+          throw new Error(
+            `Colonne « ${fieldName} » : ${error.message}`
+          );
+        }
+      }
+
+      await updateCreatedItem(
+        coreColumnValues,
+        "informations principales"
+      );
+
+      const optionalFields = [
+        [
+          "Journée",
+          COLUMN_IDS.jour,
+          jour?.trim()
+            ? { labels: [jour.trim()] }
+            : null,
+        ],
+        [
+          "Volet",
+          COLUMN_IDS.volet,
+          volet?.trim()
+            ? { labels: [volet.trim()] }
+            : null,
+        ],
+        [
+          "Mode",
+          COLUMN_IDS.mode,
+          mode?.trim()
+            ? { labels: [mode.trim()] }
+            : null,
+        ],
+        [
+          "Statut",
+          COLUMN_IDS.status,
+          status?.trim()
+            ? { label: status.trim() }
+            : null,
+        ],
+        [
+          "Affichage",
+          COLUMN_IDS.affichage,
+          affichage?.trim() || null,
+        ],
+        [
+          "Catégorie couleur",
+          COLUMN_IDS.categorieCouleur,
+          categorieCouleur?.trim()
+            ? {
+                label:
+                  categorieCouleur.trim(),
+              }
+            : null,
+        ],
+        [
+          "Notes",
+          COLUMN_IDS.notes,
+          notes?.trim() || null,
+        ],
+      ];
+
+      for (const [
+        fieldName,
+        columnId,
+        value,
+      ] of optionalFields) {
+        if (value === null) continue;
+
+        await updateCreatedItem(
+          {
+            [columnId]: value,
+          },
+          fieldName
         );
       }
 
