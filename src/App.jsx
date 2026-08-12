@@ -1807,7 +1807,7 @@ function App() {
 
       {/* HEADER */}
 
-      <header className="border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
+      <header className="no-print border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
 
         <div className="mx-auto max-w-[1800px]">
 
@@ -1876,7 +1876,7 @@ function App() {
 
       </header>
 
-      <section className="border-b border-[#303137] bg-[#18191d] px-6 py-3">
+      <section className="no-print border-b border-[#303137] bg-[#18191d] px-6 py-3">
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-3">
           <input
             type="search"
@@ -1990,7 +1990,16 @@ function App() {
 
       {/* CALENDRIER */}
 
-      <main className="overflow-x-auto p-6">
+      <main className="calendar-main overflow-x-auto p-6">
+
+        <div className="print-heading">
+          <div>FESTIVAL VITA 2026</div>
+          <h1>
+            Programmation — {days.find(
+              (day) => day.date === selectedDay
+            )?.label}
+          </h1>
+        </div>
 
         {loading && (
 
@@ -2021,7 +2030,7 @@ function App() {
 
             <>
 
-              <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
+              <div className="calendar-toolbar mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
 
                 <div className="text-[#8580d9]">
                   {
@@ -2035,6 +2044,14 @@ function App() {
                 </div>
 
                 <div className="flex items-center gap-4">
+
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="rounded-lg border border-[#8580d9] bg-[#24233a] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]"
+                  >
+                    Imprimer / PDF
+                  </button>
 
                   {saving && (
                     <span className="text-[#d9ad7c]">
@@ -2128,7 +2145,7 @@ function App() {
               </div>
 
               <div
-                className="mx-auto grid min-w-[1400px] max-w-[1800px]"
+                className="calendar-grid mx-auto grid min-w-[1400px] max-w-[1800px]"
                 style={{
                   gridTemplateColumns:
                     "80px repeat(7, minmax(180px, 1fr))",
