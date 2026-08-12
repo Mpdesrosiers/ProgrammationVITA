@@ -159,7 +159,6 @@ function getTime(item, columnId) {
    * On retire donc 1 heure pour retrouver l'heure
    * affichée dans notre programmation.
    */
-
   const totalMinutes =
     hours * 60 + minutes - 60;
 
@@ -285,8 +284,8 @@ function App() {
       }
 
       const items =
-        data.data?.boards?.[0]?.items_page
-          ?.items || [];
+        data.data?.boards?.[0]
+          ?.items_page?.items || [];
 
       const formattedActivities =
         items
@@ -511,6 +510,12 @@ function App() {
       return Object.values(groups);
     }, [selectedActivities]);
 
+  /*
+   * ------------------------------------------------
+   * HAUTEUR DES BLOCS
+   * ------------------------------------------------
+   */
+
   function getGroupHeight(group) {
     const start =
       timeToMinutes(group.debut);
@@ -522,8 +527,8 @@ function App() {
       end - start;
 
     return Math.max(
-      (duration / 30) * 56 - 4,
-      42
+      (duration / 30) * 50 - 4,
+      38
     );
   }
 
@@ -584,7 +589,7 @@ function App() {
       clientY - rect.top;
 
     const half =
-      relativeY >= 28
+      relativeY >= 25
         ? 30
         : 0;
 
@@ -692,35 +697,32 @@ function App() {
         draggedGroup.activities.map(
           async (activity) => {
             const response =
-              await fetch(
-                "/api/monday",
-                {
-                  method: "PUT",
+              await fetch("/api/monday", {
+                method: "PUT",
 
-                  headers: {
-                    "Content-Type":
-                      "application/json",
-                  },
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-                  body: JSON.stringify({
-                    itemId: activity.id,
+                body: JSON.stringify({
+                  itemId: activity.id,
 
-                    startDate:
-                      activity.date,
+                  startDate:
+                    activity.date,
 
-                    startTime:
-                      newStartTime,
+                  startTime:
+                    newStartTime,
 
-                    endDate:
-                      activity.date,
+                  endDate:
+                    activity.date,
 
-                    endTime:
-                      newEndTime,
+                  endTime:
+                    newEndTime,
 
-                    zone: newZone,
-                  }),
-                }
-              );
+                  zone: newZone,
+                }),
+              });
 
             const data =
               await response.json();
@@ -885,38 +887,35 @@ function App() {
           editingItem.activity;
 
         const response =
-          await fetch(
-            "/api/monday",
-            {
-              method: "PUT",
+          await fetch("/api/monday", {
+            method: "PUT",
 
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-              body: JSON.stringify({
-                itemId: activity.id,
+            body: JSON.stringify({
+              itemId: activity.id,
 
-                activite:
-                  editForm.activite,
+              activite:
+                editForm.activite,
 
-                startDate:
-                  newDate,
+              startDate:
+                newDate,
 
-                startTime:
-                  newStart,
+              startTime:
+                newStart,
 
-                endDate:
-                  newDate,
+              endDate:
+                newDate,
 
-                endTime:
-                  newEnd,
+              endTime:
+                newEnd,
 
-                zone: newZone,
-              }),
-            }
-          );
+              zone: newZone,
+            }),
+          });
 
         const data =
           await response.json();
@@ -1243,7 +1242,7 @@ function App() {
                     key={time}
                   >
 
-                    <div className="flex h-14 items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
+                    <div className="flex h-[50px] items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
                       {time}
                     </div>
 
@@ -1285,7 +1284,7 @@ function App() {
                             onDrop={
                               handleDrop
                             }
-                            className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
+                            className="relative h-[50px] border-b border-r border-[#303137] bg-[#151619]"
                           >
 
                             {isPreview && (
@@ -1298,7 +1297,7 @@ function App() {
                                       ? getGroupHeight(
                                           draggedGroup
                                         )
-                                      : 52,
+                                      : 46,
                                 }}
                               >
 
@@ -1465,29 +1464,24 @@ function App() {
       {editingItem && (
 
         <div
-          className="fixed inset-0 z-[2000] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
           onMouseDown={(
             event
           ) => {
+
             if (
               event.target ===
               event.currentTarget
             ) {
               closeEditor();
             }
+
           }}
         >
 
-          <div
-            className="flex w-full max-w-lg max-h-[calc(100vh-32px)] flex-col overflow-hidden rounded-xl border border-[#3a3b42] bg-[#1b1c20] shadow-2xl"
-            onMouseDown={(event) =>
-              event.stopPropagation()
-            }
-          >
+          <div className="w-full max-w-lg rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
 
-            {/* HEADER FIXE */}
-
-            <div className="flex shrink-0 items-start justify-between border-b border-[#303137] p-6">
+            <div className="mb-6 flex items-start justify-between">
 
               <div>
 
@@ -1524,9 +1518,7 @@ function App() {
 
             </div>
 
-            {/* CONTENU SCROLLABLE */}
-
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <div className="max-h-[70vh] overflow-y-auto pr-1">
 
               <div className="space-y-5">
 
@@ -1568,55 +1560,29 @@ function App() {
 
                   <div className="rounded-lg border border-[#303137] bg-[#151619] p-3">
 
-                    <div className="mb-2 flex items-center justify-between">
-
-                      <div className="text-xs font-medium text-[#85858c]">
-                        ACTIVITÉS DU GROUPE
-                      </div>
-
-                      <div className="text-xs text-[#66676e]">
-                        {
-                          editingItem.group.activities.length
-                        }{" "}
-                        activité
-                        {editingItem.group.activities.length !==
-                        1
-                          ? "s"
-                          : ""}
-                      </div>
-
+                    <div className="mb-2 text-xs font-medium text-[#85858c]">
+                      ACTIVITÉS DU GROUPE
                     </div>
 
-                    {/* 
-                     * LISTE DES ACTIVITÉS
-                     * SCROLLABLE INDÉPENDAMMENT
-                     */}
+                    <div className="max-h-40 space-y-1 overflow-y-auto pr-2">
 
-                    <div className="max-h-40 overflow-y-auto rounded-md border border-[#292a2f] bg-[#111214] p-2">
+                      {editingItem.group.activities.map(
+                        (activity) => (
 
-                      <div className="space-y-1">
+                          <div
+                            key={
+                              activity.id
+                            }
+                            className="text-sm text-[#e4e4e7]"
+                          >
+                            •{" "}
+                            {
+                              activity.activite
+                            }
+                          </div>
 
-                        {editingItem.group.activities.map(
-                          (
-                            activity
-                          ) => (
-
-                            <div
-                              key={
-                                activity.id
-                              }
-                              className="rounded px-2 py-1 text-sm text-[#e4e4e7] hover:bg-[#1d1e22]"
-                            >
-                              •{" "}
-                              {
-                                activity.activite
-                              }
-                            </div>
-
-                          )
-                        )}
-
-                      </div>
+                        )
+                      )}
 
                     </div>
 
@@ -1701,12 +1667,8 @@ function App() {
                         (time) => (
 
                           <option
-                            key={
-                              time
-                            }
-                            value={
-                              time
-                            }
+                            key={time}
+                            value={time}
                           >
                             {time}
                           </option>
@@ -1747,12 +1709,8 @@ function App() {
                         (time) => (
 
                           <option
-                            key={
-                              time
-                            }
-                            value={
-                              time
-                            }
+                            key={time}
+                            value={time}
                           >
                             {time}
                           </option>
@@ -1820,18 +1778,14 @@ function App() {
 
             </div>
 
-            {/* FOOTER FIXE */}
-
-            <div className="flex shrink-0 justify-end gap-3 border-t border-[#303137] bg-[#1b1c20] p-6">
+            <div className="mt-7 flex justify-end gap-3">
 
               <button
                 type="button"
                 onClick={
                   closeEditor
                 }
-                disabled={
-                  editSaving
-                }
+                disabled={editSaving}
                 className="rounded-lg border border-[#3a3b42] bg-[#303137] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#404148] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Annuler
