@@ -86,45 +86,62 @@ export default async function handler(req, res) {
      * On conserve donc ton système actuel de +1 heure.
      */
 
-    function addOneHourToDateTime(date, time) {
+    function toMondayUtcDateTime(date, time) {
+      const [year, month, day] = date
+        .split("-")
+        .map(Number);
       const [hours, minutes] = time
         .split(":")
         .map(Number);
 
-      let totalMinutes =
-        hours * 60 + minutes + 60;
-
-      let newDate = date;
-
-      if (totalMinutes >= 1440) {
-        totalMinutes -= 1440;
-
-        const dateObject = new Date(
-          `${date}T00:00:00`
-        );
-
-        dateObject.setDate(
-          dateObject.getDate() + 1
-        );
-
-        newDate =
-          dateObject
-            .toISOString()
-            .slice(0, 10);
-      }
-
-      const newHours = Math.floor(
-        totalMinutes / 60
+      const desiredUtc = Date.UTC(
+        year,
+        month - 1,
+        day,
+        hours,
+        minutes
       );
 
-      const newMinutes =
-        totalMinutes % 60;
+      let instant = desiredUtc;
+
+      // Trouve l'instant UTC correspondant à l'heure locale
+      // America/Toronto, en tenant compte automatiquement
+      // de l'heure normale et de l'heure d'été.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const parts = new Intl.DateTimeFormat(
+          "en-CA",
+          {
+            timeZone: "America/Toronto",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+          }
+        ).formatToParts(new Date(instant));
+
+        const getPart = (type) =>
+          Number(parts.find(
+            (part) => part.type === type
+          )?.value);
+
+        const representedLocal = Date.UTC(
+          getPart("year"),
+          getPart("month") - 1,
+          getPart("day"),
+          getPart("hour"),
+          getPart("minute")
+        );
+
+        instant += desiredUtc - representedLocal;
+      }
+
+      const result = new Date(instant);
 
       return {
-        date: newDate,
-        time:
-          `${String(newHours).padStart(2, "0")}:` +
-          `${String(newMinutes).padStart(2, "0")}:00`,
+        date: result.toISOString().slice(0, 10),
+        time: result.toISOString().slice(11, 19),
       };
     }
 
@@ -374,13 +391,13 @@ export default async function handler(req, res) {
       }
 
       const mondayStart =
-        addOneHourToDateTime(
+        toMondayUtcDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        addOneHourToDateTime(
+        toMondayUtcDateTime(
           endDate,
           endTime
         );
@@ -595,13 +612,13 @@ export default async function handler(req, res) {
        */
 
       const mondayStart =
-        addOneHourToDateTime(
+        toMondayUtcDateTime(
           startDate,
           startTime
         );
 
       const mondayEnd =
-        addOneHourToDateTime(
+        toMondayUtcDateTime(
           endDate,
           endTime
         );
