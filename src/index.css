@@ -44,7 +44,7 @@ p {
   color: #a1a1a8;
 }
 
-.print-heading {
+.print-document {
   display: none;
 }
 
@@ -62,40 +62,119 @@ p {
   }
 
   .no-print,
-  .calendar-toolbar {
+  .calendar-main {
     display: none !important;
   }
 
-  .print-heading {
+  .print-document {
     display: block;
-    margin: 0 0 5mm;
-    color: #111111;
   }
 
-  .print-heading > div {
+  .print-page {
+    height: 194mm;
+    overflow: hidden;
+    break-after: page;
+    page-break-after: always;
+    color: #111111;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .print-page-title {
+    height: 14mm;
+  }
+
+  .print-page-title > div {
     color: #625ea8;
-    font-size: 9pt;
+    font-size: 8pt;
     font-weight: 700;
   }
 
-  .print-heading h1 {
-    margin-top: 1mm;
-    font-size: 16pt;
+  .print-page-title h1 {
+    margin: 0.5mm 0 0;
+    font-size: 14pt;
   }
 
-  .calendar-main {
-    overflow: visible !important;
-    padding: 0 !important;
+  .print-zone-headings {
+    display: grid;
+    grid-template-columns: 15mm repeat(7, 1fr);
+    height: 10mm;
+    border: 0.3mm solid #777777;
+    border-bottom: 0;
+    background: #eeeeef;
+    font-size: 7pt;
+    font-weight: 700;
+    text-align: center;
   }
 
-  .calendar-grid {
-    width: 1800px !important;
-    min-width: 1800px !important;
-    max-width: none !important;
-    zoom: 0.53 !important;
-    break-inside: avoid;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+  .print-zone-headings > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 0.2mm solid #aaaaaa;
+    padding: 1mm;
+  }
+
+  .print-schedule {
+    display: grid;
+    grid-template-columns: 15mm repeat(7, 1fr);
+    height: 166mm;
+    border: 0.3mm solid #777777;
+  }
+
+  .print-time-axis,
+  .print-zone-lane {
+    position: relative;
+    height: 100%;
+    border-right: 0.2mm solid #999999;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(2.7027% - 0.15mm),
+      #d2d2d2 calc(2.7027% - 0.15mm),
+      #d2d2d2 2.7027%
+    );
+  }
+
+  .print-time-axis span {
+    position: absolute;
+    right: 1.5mm;
+    z-index: 2;
+    transform: translateY(-50%);
+    background: #ffffff;
+    padding: 0 0.5mm;
+    font-size: 5.5pt;
+    color: #444444;
+  }
+
+  .print-activity {
+    position: absolute;
+    left: 0.7mm;
+    right: 0.7mm;
+    z-index: 3;
+    overflow: hidden;
+    border: 0.35mm solid;
+    border-radius: 1mm;
+    padding: 0.5mm 0.7mm;
+    color: #171717;
+    font-size: 5.5pt;
+    line-height: 1.05;
+  }
+
+  .print-activity strong,
+  .print-activity span {
+    display: block;
+  }
+
+  .print-activity span {
+    margin-top: 0.3mm;
+    font-size: 4.8pt;
+    font-weight: 600;
   }
 
   .fixed {
