@@ -300,7 +300,7 @@ export default async function handler(req, res) {
     async function waitForMonday() {
       await new Promise(
         (resolve) =>
-          setTimeout(resolve, 1800)
+          setTimeout(resolve, 5000)
       );
     }
 
