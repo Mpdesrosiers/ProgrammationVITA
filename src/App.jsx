@@ -288,9 +288,11 @@ function App() {
    * ================================
    */
 
-  async function loadActivities() {
+  async function loadActivities(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
 
       const response =
         await fetch("/api/monday");
@@ -389,7 +391,9 @@ function App() {
       console.error(err);
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 
@@ -770,7 +774,7 @@ function App() {
         saveRequests
       );
 
-      await loadActivities();
+      await loadActivities(true);
 
       setSaveMessage(
         "✓ Modification confirmée dans Monday"
@@ -782,7 +786,7 @@ function App() {
         "⚠️ Le changement est affiché, mais la sauvegarde dans Monday a échoué."
       );
 
-      await loadActivities();
+      await loadActivities(true);
     } finally {
       setSaving(false);
     }
@@ -1121,7 +1125,7 @@ function App() {
 
       setSelectedDay(newDate);
 
-      await loadActivities();
+      await loadActivities(true);
 
       setSaveMessage(
         "✓ Modification confirmée dans Monday"
@@ -1129,7 +1133,7 @@ function App() {
     } catch (err) {
       console.error(err);
 
-      await loadActivities();
+      await loadActivities(true);
 
       setEditError(
         err.message ||
@@ -1251,7 +1255,7 @@ function App() {
         "✓ Activité ajoutée dans Monday"
       );
 
-      await loadActivities();
+      await loadActivities(true);
     } catch (err) {
       console.error(err);
 
