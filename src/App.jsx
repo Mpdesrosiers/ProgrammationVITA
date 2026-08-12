@@ -341,6 +341,79 @@ function App() {
     loadActivities();
   }, []);
 
+  /*
+   * AUTO-SCROLL PENDANT LE DRAG
+   *
+   * Lorsque la souris approche du haut ou du bas
+   * de l'écran pendant qu'un bloc est déplacé,
+   * la page défile automatiquement.
+   */
+  useEffect(() => {
+    if (!draggedGroup) return;
+
+    function handleWindowDragOver(event) {
+      const edgeSize = 100;
+      const maxSpeed = 18;
+
+      const mouseY = event.clientY;
+      const windowHeight = window.innerHeight;
+
+      /*
+       * Près du bas :
+       * plus la souris est proche du bord,
+       * plus le défilement est rapide.
+       */
+      if (
+        mouseY >
+        windowHeight - edgeSize
+      ) {
+        const distance =
+          windowHeight - mouseY;
+
+        const intensity =
+          1 -
+          distance / edgeSize;
+
+        window.scrollBy(
+          0,
+          Math.max(
+            2,
+            intensity * maxSpeed
+          )
+        );
+      }
+
+      /*
+       * Près du haut.
+       */
+      if (mouseY < edgeSize) {
+        const intensity =
+          1 -
+          mouseY / edgeSize;
+
+        window.scrollBy(
+          0,
+          -Math.max(
+            2,
+            intensity * maxSpeed
+          )
+        );
+      }
+    }
+
+    window.addEventListener(
+      "dragover",
+      handleWindowDragOver
+    );
+
+    return () => {
+      window.removeEventListener(
+        "dragover",
+        handleWindowDragOver
+      );
+    };
+  }, [draggedGroup]);
+
   const selectedActivities =
     useMemo(() => {
       return activities.filter(
@@ -418,8 +491,8 @@ function App() {
   }
 
   /*
-   * Calcule l'heure en fonction de la position
-   * exacte de la souris dans la colonne.
+   * Calcule l'heure exacte selon la position
+   * verticale de la souris dans la cellule.
    */
   function getDropTimeFromMouse(event) {
     const cell =
@@ -431,11 +504,6 @@ function App() {
     const y =
       event.clientY - rect.top;
 
-    /*
-     * Chaque ligne fait 56 px.
-     * On arrondit au créneau de 30 minutes
-     * correspondant à la position de la souris.
-     */
     const slotIndex =
       Math.floor(y / 56);
 
@@ -918,13 +986,15 @@ function App() {
 
                             {/* 
                               APERÇU DU DROP
-                              
+
                               z-50 = toujours par-dessus
                               les blocs existants.
+
                               pointer-events-none =
                               la souris continue de
                               contrôler la cellule située dessous.
                             */}
+
                             {isPreview && (
                               <div
                                 className="pointer-events-none absolute left-1 right-1 top-1 z-50 rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
