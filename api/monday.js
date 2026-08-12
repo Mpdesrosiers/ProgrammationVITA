@@ -9,9 +9,7 @@ export default async function handler(req, res) {
       fin: "date_mm63gzbs",
       volet: "dropdown_mm63ffn6",
       zone: "color_mm63vn4d",
-      mode: "dropdown_mm63xxam",
       status: "status",
-      affichage: "text_mm5zme5q",
       categorieCouleur: "color_mm63ahs6",
       notes: "text_mm5z2k1c",
     };
@@ -267,7 +265,6 @@ export default async function handler(req, res) {
           boards(ids: [${BOARD_ID}]) {
             columns(ids: [
               "${COLUMN_IDS.volet}",
-              "${COLUMN_IDS.mode}",
               "${COLUMN_IDS.status}",
               "${COLUMN_IDS.categorieCouleur}"
             ]) {
@@ -422,9 +419,7 @@ export default async function handler(req, res) {
         jour,
         volet,
         zone,
-        mode,
         status,
-        affichage,
         categorieCouleur,
         notes,
       } = req.body || {};
@@ -604,23 +599,11 @@ export default async function handler(req, res) {
             : null,
         ],
         [
-          "Mode",
-          COLUMN_IDS.mode,
-          mode?.trim()
-            ? { labels: [mode.trim()] }
-            : null,
-        ],
-        [
           "Statut",
           COLUMN_IDS.status,
           status?.trim()
             ? { label: status.trim() }
             : null,
-        ],
-        [
-          "Affichage",
-          COLUMN_IDS.affichage,
-          affichage?.trim() || null,
         ],
         [
           "Catégorie couleur",
