@@ -275,6 +275,9 @@ function App() {
   const [undoing, setUndoing] =
     useState(false);
 
+  const [contextMenu, setContextMenu] =
+    useState(null);
+
   /*
    * ================================
    * POPUP MODIFICATION
@@ -1150,6 +1153,59 @@ function App() {
     setEditError("");
   }
 
+  function openActivityContextMenu(
+    event,
+    group
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setContextMenu({
+      x: Math.min(
+        event.clientX,
+        window.innerWidth - 300
+      ),
+      y: Math.min(
+        event.clientY,
+        window.innerHeight - 220
+      ),
+      activities: group.activities,
+    });
+  }
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const close = () =>
+      setContextMenu(null);
+
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        close();
+      }
+    };
+
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener(
+      "keydown",
+      closeOnEscape
+    );
+
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener(
+        "scroll",
+        close,
+        true
+      );
+      window.removeEventListener(
+        "keydown",
+        closeOnEscape
+      );
+    };
+  }, [contextMenu]);
+
   /*
    * ================================
    * OUVERTURE DU POPUP AJOUT
@@ -1458,16 +1514,20 @@ function App() {
     }
   }
 
-  async function handleDeleteActivity() {
-    if (
-      editingItem?.type !==
-      "activity"
-    ) {
+  async function handleDeleteActivity(
+    selectedActivity = null
+  ) {
+    const activity =
+      selectedActivity ||
+      (
+        editingItem?.type === "activity"
+          ? editingItem.activity
+          : null
+      );
+
+    if (!activity) {
       return;
     }
-
-    const activity =
-      editingItem.activity;
 
     const confirmed =
       window.confirm(
@@ -1523,7 +1583,14 @@ function App() {
         )
       );
 
-      setEditingItem(null);
+      if (
+        editingItem?.type === "activity" &&
+        editingItem.activity.id === activity.id
+      ) {
+        setEditingItem(null);
+      }
+
+      setContextMenu(null);
 
       setSaveMessage(
         "✓ Activité supprimée de Monday"
@@ -1543,6 +1610,77 @@ function App() {
       );
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  async function handleDuplicateActivity(
+    activity
+  ) {
+    setContextMenu(null);
+    setSaving(true);
+    setSaveMessage("Duplication…");
+
+    try {
+      const response = await fetch(
+        "/api/monday",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            activite:
+              `${activity.activite} - Copie`,
+            startDate: activity.date,
+            startTime: activity.debut,
+            endDate: activity.date,
+            endTime: activity.fin,
+            jour:
+              days.find(
+                (day) =>
+                  day.date === activity.date
+              )?.mondayLabel || "",
+            volet: activity.volet,
+            zone: activity.zone,
+            status: activity.status,
+            categorieCouleur:
+              activity.categorieCouleur,
+            notes: activity.notes,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(
+          (
+            Array.isArray(data.details)
+              ? data.details[0]?.message
+              : data.details
+          ) ||
+            data.error ||
+            "Impossible de dupliquer l'activité."
+        );
+      }
+
+      addHistory({
+        label:
+          `Duplication de « ${activity.activite} »`,
+      });
+
+      await loadActivities(true);
+      setSaveMessage(
+        "✓ Activité dupliquée dans Monday"
+      );
+    } catch (err) {
+      console.error(err);
+      setSaveMessage(
+        `⚠️ ${err.message}`
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -2226,6 +2364,14 @@ function App() {
                                         );
                                       }
                                     }}
+                                    onContextMenu={(
+                                      event
+                                    ) =>
+                                      openActivityContextMenu(
+                                        event,
+                                        group
+                                      )
+                                    }
                                     className={
                                       "absolute left-1 right-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
                                       (
@@ -2325,6 +2471,61 @@ function App() {
           )}
 
       </main>
+
+      {contextMenu && (
+        <div
+          className="fixed z-[3000] w-[280px] rounded-lg border border-[#3a3b42] bg-[#202126] p-2 text-white shadow-2xl"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+          onClick={(event) =>
+            event.stopPropagation()
+          }
+          onContextMenu={(event) =>
+            event.preventDefault()
+          }
+        >
+          {contextMenu.activities.map(
+            (activity) => (
+              <div
+                key={activity.id}
+                className="border-b border-[#303137] p-2 last:border-0"
+              >
+                <div className="mb-2 truncate text-xs font-semibold text-[#d8d8dc]">
+                  {activity.activite}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDuplicateActivity(
+                        activity
+                      )
+                    }
+                    className="rounded-md bg-[#8580d9] px-3 py-2 text-xs font-semibold text-[#151619] hover:bg-[#9995e3]"
+                  >
+                    Dupliquer
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDeleteActivity(
+                        activity
+                      )
+                    }
+                    className="rounded-md border border-[#df2f4a] bg-[#24171a] px-3 py-2 text-xs font-semibold text-[#ff8b9a] hover:bg-[#351b20]"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
 
       {/* ==================================================
           POPUP D'ÉDITION
@@ -2625,7 +2826,8 @@ function App() {
                   <button
                     type="button"
                     onClick={
-                      handleDeleteActivity
+                      () =>
+                        handleDeleteActivity()
                     }
                     disabled={editSaving}
                     className="rounded-lg border border-[#df2f4a] bg-[#24171a] px-5 py-2.5 text-sm font-semibold text-[#ff8b9a] transition hover:bg-[#351b20] disabled:cursor-not-allowed disabled:opacity-50"
