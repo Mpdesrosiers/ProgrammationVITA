@@ -1,4 +1,14 @@
+import { requireSession } from "./auth/_shared.js";
+
 export default async function handler(req, res) {
+  const session = requireSession(
+    req,
+    res,
+    req.method !== "GET"
+  );
+
+  if (!session) return;
+
   try {
     const BOARD_ID = "18425508055";
 
