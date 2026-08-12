@@ -154,11 +154,10 @@ function getTime(item, columnId) {
     .split(":")
     .map(Number);
 
-  /*
-   * Monday nous renvoie une heure décalée d'une heure.
-   * On retire donc 1 heure pour retrouver l'heure
-   * affichée dans notre programmation.
-   */
+  // Monday nous renvoie une heure décalée d'une heure.
+  // On retire donc 1 heure pour retrouver l'heure
+  // affichée dans notre programmation.
+
   const totalMinutes =
     hours * 60 + minutes - 60;
 
@@ -236,9 +235,9 @@ function App() {
     useState("");
 
   /*
-   * --------------------------------------------------
+   * ================================
    * POPUP MODIFICATION
-   * --------------------------------------------------
+   * ================================
    */
 
   const [editingItem, setEditingItem] =
@@ -260,9 +259,9 @@ function App() {
     useState("");
 
   /*
-   * --------------------------------------------------
+   * ================================
    * POPUP CRÉATION
-   * --------------------------------------------------
+   * ================================
    */
 
   const [creatingActivity, setCreatingActivity] =
@@ -284,22 +283,25 @@ function App() {
     useState("");
 
   /*
-   * --------------------------------------------------
+   * ================================
    * CHARGEMENT MONDAY
-   * --------------------------------------------------
+   * ================================
    */
 
   async function loadActivities() {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        "/api/monday"
-      );
+      const response =
+        await fetch("/api/monday");
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || data.error) {
+      if (
+        !response.ok ||
+        data.error
+      ) {
         throw new Error(
           data.details?.[0]?.message ||
             data.error ||
@@ -308,8 +310,8 @@ function App() {
       }
 
       const items =
-        data.data?.boards?.[0]?.items_page
-          ?.items || [];
+        data.data?.boards?.[0]
+          ?.items_page?.items || [];
 
       const formattedActivities =
         items
@@ -396,9 +398,9 @@ function App() {
   }, []);
 
   /*
-   * --------------------------------------------------
+   * ================================
    * AUTO-SCROLL PENDANT LE DRAG
-   * --------------------------------------------------
+   * ================================
    */
 
   useEffect(() => {
@@ -434,8 +436,7 @@ function App() {
         mouseY < edgeSize
       ) {
         const intensity =
-          1 -
-          mouseY / edgeSize;
+          1 - mouseY / edgeSize;
 
         scrollAmount =
           -Math.max(
@@ -479,9 +480,9 @@ function App() {
   }, [draggedGroup]);
 
   /*
-   * --------------------------------------------------
+   * ================================
    * ACTIVITÉS DU JOUR
-   * --------------------------------------------------
+   * ================================
    */
 
   const selectedActivities =
@@ -496,9 +497,9 @@ function App() {
     ]);
 
   /*
-   * --------------------------------------------------
+   * ================================
    * GROUPES
-   * --------------------------------------------------
+   * ================================
    */
 
   const activityGroups =
@@ -544,9 +545,6 @@ function App() {
     const duration =
       end - start;
 
-    /*
-     * 45 px par tranche de 30 minutes.
-     */
     return Math.max(
       (duration / 30) * 45 - 4,
       34
@@ -554,9 +552,9 @@ function App() {
   }
 
   /*
-   * --------------------------------------------------
+   * ================================
    * DRAG & DROP
-   * --------------------------------------------------
+   * ================================
    */
 
   function handleDragStart(group) {
@@ -789,9 +787,9 @@ function App() {
   }
 
   /*
-   * --------------------------------------------------
-   * OUVERTURE DU POPUP DE MODIFICATION
-   * --------------------------------------------------
+   * ================================
+   * OUVERTURE DU POPUP MODIFICATION
+   * ================================
    */
 
   function openActivityEditor(activity) {
@@ -855,9 +853,9 @@ function App() {
   }
 
   /*
-   * --------------------------------------------------
-   * OUVERTURE DU POPUP D'AJOUT
-   * --------------------------------------------------
+   * ================================
+   * OUVERTURE DU POPUP AJOUT
+   * ================================
    */
 
   function openCreateEditor(
@@ -893,9 +891,9 @@ function App() {
   }
 
   /*
-   * --------------------------------------------------
-   * SAUVEGARDE DU POPUP DE MODIFICATION
-   * --------------------------------------------------
+   * ================================
+   * SAUVEGARDE DU POPUP MODIFICATION
+   * ================================
    */
 
   async function handleSaveEditor() {
@@ -1137,9 +1135,9 @@ function App() {
   }
 
   /*
-   * --------------------------------------------------
-   * CRÉATION D'UNE ACTIVITÉ DANS MONDAY
-   * --------------------------------------------------
+   * ================================
+   * CRÉATION D'UNE ACTIVITÉ
+   * ================================
    */
 
   async function handleCreateActivity() {
@@ -1247,11 +1245,6 @@ function App() {
         "✓ Activité ajoutée dans Monday"
       );
 
-      /*
-       * On recharge les données depuis Monday
-       * afin que le nouvel item apparaisse
-       * avec toutes ses colonnes.
-       */
       await loadActivities();
     } catch (err) {
       console.error(err);
@@ -1266,9 +1259,9 @@ function App() {
   }
 
   /*
-   * --------------------------------------------------
+   * ================================
    * RENDU
-   * --------------------------------------------------
+   * ================================
    */
 
   return (
@@ -1498,15 +1491,6 @@ function App() {
                             data-zone={zone}
                             onClick={() => {
 
-                              /*
-                               * Si la cellule est vide,
-                               * on ouvre le popup d'ajout.
-                               *
-                               * Si elle contient une activité,
-                               * le clic sur l'activité elle-même
-                               * est géré par son propre onClick.
-                               */
-
                               if (
                                 groupsHere.length ===
                                 0
@@ -1716,9 +1700,9 @@ function App() {
 
       </main>
 
-      {/* --------------------------------------------------
+      {/* ==================================================
           POPUP D'ÉDITION
-          -------------------------------------------------- */}
+          ================================================== */}
 
       {editingItem && (
 
@@ -2054,11 +2038,9 @@ function App() {
                 }
                 className="rounded-lg bg-[#8580d9] px-5 py-2.5 text-sm font-semibold text-[#151619] transition hover:bg-[#9995e3] disabled:cursor-not-allowed disabled:opacity-50"
               >
-
                 {editSaving
                   ? "Enregistrement…"
                   : "Enregistrer"}
-
               </button>
 
             </div>
@@ -2069,9 +2051,9 @@ function App() {
 
       )}
 
-      {/* --------------------------------------------------
+      {/* ==================================================
           POPUP AJOUT D'ACTIVITÉ
-          -------------------------------------------------- */}
+          ================================================== */}
 
       {creatingActivity && (
 
@@ -2090,8 +2072,6 @@ function App() {
         >
 
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
-
-            {/* TITRE */}
 
             <div className="mb-6 flex items-start justify-between">
 
@@ -2377,11 +2357,9 @@ function App() {
                 }
                 className="rounded-lg bg-[#8580d9] px-5 py-2.5 text-sm font-semibold text-[#151619] transition hover:bg-[#9995e3] disabled:cursor-not-allowed disabled:opacity-50"
               >
-
                 {createSaving
                   ? "Création…"
                   : "Ajouter l'activité"}
-
               </button>
 
             </div>
