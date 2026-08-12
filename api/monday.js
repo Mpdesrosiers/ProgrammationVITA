@@ -228,36 +228,90 @@ export default async function handler(req, res) {
      */
 
     async function getAllMondayItems() {
-      const query = `
+      const itemFields = `
+        id
+        name
+        updated_at
+
+        column_values {
+          id
+          text
+          value
+        }
+      `;
+
+      const firstPageQuery = `
         query {
           boards(ids: [${BOARD_ID}]) {
-            id
-            name
-
             items_page(limit: 500) {
+              cursor
               items {
-                id
-                name
-                updated_at
-
-                column_values {
-                  id
-                  text
-                  value
-                }
+                ${itemFields}
               }
             }
           }
         }
       `;
 
-      const data =
-        await mondayRequest(query);
+      const firstPageData =
+        await mondayRequest(
+          firstPageQuery
+        );
 
-      return (
-        data.data?.boards?.[0]
-          ?.items_page?.items || []
-      );
+      const firstPage =
+        firstPageData.data?.boards?.[0]
+          ?.items_page;
+
+      const allItems = [
+        ...(firstPage?.items || []),
+      ];
+
+      let cursor =
+        firstPage?.cursor || null;
+
+      const visitedCursors =
+        new Set();
+
+      while (
+        cursor &&
+        !visitedCursors.has(cursor)
+      ) {
+        visitedCursors.add(cursor);
+
+        const nextPageQuery = `
+          query {
+            next_items_page(
+              limit: 500
+              cursor: ${JSON.stringify(
+                cursor
+              )}
+            ) {
+              cursor
+              items {
+                ${itemFields}
+              }
+            }
+          }
+        `;
+
+        const nextPageData =
+          await mondayRequest(
+            nextPageQuery
+          );
+
+        const nextPage =
+          nextPageData.data
+            ?.next_items_page;
+
+        allItems.push(
+          ...(nextPage?.items || [])
+        );
+
+        cursor =
+          nextPage?.cursor || null;
+      }
+
+      return allItems;
     }
 
     async function getMondayColumnOptions() {
