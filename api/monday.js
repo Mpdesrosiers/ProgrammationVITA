@@ -5,7 +5,7 @@ export default async function handler(req, res) {
         boards(ids: [18425508055]) {
           id
           name
-          items_page(limit: 10) {
+          items_page(limit: 500) {
             items {
               id
               name
