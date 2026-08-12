@@ -88,6 +88,12 @@ function getColumn(item, columnId) {
   return column?.text || "";
 }
 
+/*
+ * On utilise le "text" de Monday pour la date.
+ *
+ * Le "value" de Monday peut contenir une date UTC
+ * décalée au jour suivant.
+ */
 function getDate(item) {
   const column = item.column_values?.find(
     (col) => col.id === COLUMN_IDS.debut
@@ -102,6 +108,13 @@ function getDate(item) {
   return match ? match[1] : "";
 }
 
+/*
+ * Monday nous renvoie l'heure avec un décalage
+ * d'une heure.
+ *
+ * On retire donc 1 heure pour retrouver
+ * l'heure réelle de notre programmation.
+ */
 function getTime(item, columnId) {
   const text = getColumn(item, columnId);
 
@@ -160,8 +173,16 @@ function App() {
   const [error, setError] =
     useState("");
 
-  const [draggedActivity, setDraggedActivity] =
+  /*
+   * On ne drag plus une activité individuelle.
+   * On drag un groupe.
+   */
+  const [draggedGroup, setDraggedGroup] =
     useState(null);
+
+  /*
+   * CHARGEMENT DES DONNÉES MONDAY
+   */
 
   useEffect(() => {
     async function loadActivities() {
@@ -269,6 +290,10 @@ function App() {
     loadActivities();
   }, []);
 
+  /*
+   * ACTIVITÉS DU JOUR
+   */
+
   const selectedActivities =
     useMemo(() => {
       return activities.filter(
@@ -280,29 +305,94 @@ function App() {
       selectedDay,
     ]);
 
-  function getActivityHeight(
-    activity
-  ) {
+  /*
+   * REGROUPEMENT
+   *
+   * Les activités sont regroupées si elles ont :
+   *
+   * - la même journée
+   * - la même zone
+   * - le même début
+   * - la même fin
+   *
+   * Exemple :
+   *
+   * Naomi       20:00 → 21:00
+   * DJ          20:00 → 21:00
+   * Animation   20:00 → 21:00
+   *
+   * deviennent un seul groupe.
+   */
+
+  const activityGroups =
+    useMemo(() => {
+      const groups = {};
+
+      selectedActivities.forEach(
+        (activity) => {
+          const key = [
+            activity.date,
+            activity.zone,
+            activity.debut,
+            activity.fin,
+          ].join("|");
+
+          if (!groups[key]) {
+            groups[key] = {
+              id: key,
+              date: activity.date,
+              zone: activity.zone,
+              debut: activity.debut,
+              fin: activity.fin,
+              activities: [],
+            };
+          }
+
+          groups[key].activities.push(
+            activity
+          );
+        }
+      );
+
+      return Object.values(groups);
+    }, [selectedActivities]);
+
+  /*
+   * HAUTEUR DU BLOC
+   *
+   * 30 minutes = 56 px
+   */
+
+  function getGroupHeight(group) {
     const start =
-      timeToMinutes(activity.debut);
+      timeToMinutes(group.debut);
 
     const end =
-      timeToMinutes(activity.fin);
+      timeToMinutes(group.fin);
 
     const duration =
       end - start;
 
     return Math.max(
-      (duration / 30) * 56,
+      (duration / 30) * 56 - 4,
       42
     );
   }
 
-  function handleDragStart(
-    activity
-  ) {
-    setDraggedActivity(activity);
+  /*
+   * DRAG START
+   */
+
+  function handleDragStart(group) {
+    setDraggedGroup(group);
   }
+
+  /*
+   * DROP
+   *
+   * Toutes les activités du groupe
+   * changent de zone et d'heure ensemble.
+   */
 
   function handleDrop(
     event,
@@ -311,16 +401,16 @@ function App() {
   ) {
     event.preventDefault();
 
-    if (!draggedActivity) return;
+    if (!draggedGroup) return;
 
     const oldStart =
       timeToMinutes(
-        draggedActivity.debut
+        draggedGroup.debut
       );
 
     const oldEnd =
       timeToMinutes(
-        draggedActivity.fin
+        draggedGroup.fin
       );
 
     const duration =
@@ -332,10 +422,16 @@ function App() {
     const newEnd =
       newStart + duration;
 
+    const draggedIds =
+      draggedGroup.activities.map(
+        (activity) => activity.id
+      );
+
     setActivities((current) =>
       current.map((activity) =>
-        activity.id ===
-        draggedActivity.id
+        draggedIds.includes(
+          activity.id
+        )
           ? {
               ...activity,
               zone: newZone,
@@ -352,7 +448,7 @@ function App() {
       )
     );
 
-    setDraggedActivity(null);
+    setDraggedGroup(null);
   }
 
   return (
@@ -448,6 +544,8 @@ function App() {
 
             <>
 
+              {/* INFO */}
+
               <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
 
                 <div className="text-[#8580d9]">
@@ -464,12 +562,14 @@ function App() {
                 </div>
 
                 <div className="text-[#777980]">
-                  Glissez-déposez une
-                  activité pour la
-                  déplacer
+                  Glissez-déposez un
+                  groupe pour déplacer
+                  toutes ses activités
                 </div>
 
               </div>
+
+              {/* GRILLE */}
 
               <div
                 className="mx-auto grid min-w-[1400px] max-w-[1800px]"
@@ -529,14 +629,19 @@ function App() {
                     {zones.map(
                       (zone) => {
 
-                        const activitiesHere =
-                          selectedActivities.filter(
-                            (
-                              activity
-                            ) =>
-                              activity.zone ===
+                        /*
+                         * On cherche les groupes
+                         * qui commencent exactement
+                         * à cette heure et dans
+                         * cette zone.
+                         */
+
+                        const groupsHere =
+                          activityGroups.filter(
+                            (group) =>
+                              group.zone ===
                                 zone &&
-                              activity.debut ===
+                              group.debut ===
                                 time
                           );
 
@@ -561,54 +666,90 @@ function App() {
                             className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
                           >
 
-                            {activitiesHere.map(
-                              (
-                                activity
-                              ) => (
+                            {groupsHere.map(
+                              (group) => (
 
                                 <div
                                   key={
-                                    activity.id
+                                    group.id
                                   }
                                   draggable
                                   onDragStart={() =>
                                     handleDragStart(
-                                      activity
+                                      group
                                     )
                                   }
                                   className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 border-[#151619] p-2 text-xs font-semibold text-white shadow-lg active:cursor-grabbing"
                                   style={{
                                     height:
-                                      getActivityHeight(
-                                        activity
-                                      ) - 4,
+                                      getGroupHeight(
+                                        group
+                                      ),
                                     backgroundColor:
                                       zoneColors[
-                                        activity
-                                          .zone
+                                        group.zone
                                       ] ||
                                       "#8580d9",
                                   }}
                                   title={
-                                    `${activity.activite}\n` +
-                                    `${activity.debut} – ${activity.fin}`
+                                    group.activities
+                                      .map(
+                                        (
+                                          activity
+                                        ) =>
+                                          activity.activite
+                                      )
+                                      .join(
+                                        "\n"
+                                      )
                                   }
                                 >
 
-                                  <div>
-                                    {
-                                      activity.activite
-                                    }
+                                  {/* LISTE DES ACTIVITÉS */}
+
+                                  <div className="space-y-0.5">
+
+                                    {group.activities.map(
+                                      (
+                                        activity
+                                      ) => (
+
+                                        <div
+                                          key={
+                                            activity.id
+                                          }
+                                          className="flex items-start gap-1"
+                                        >
+
+                                          <span className="opacity-70">
+                                            •
+                                          </span>
+
+                                          <span>
+                                            {
+                                              activity.activite
+                                            }
+                                          </span>
+
+                                        </div>
+
+                                      )
+                                    )}
+
                                   </div>
 
+                                  {/* HEURES */}
+
                                   <div className="mt-1 text-[10px] font-normal opacity-80">
+
                                     {
-                                      activity.debut
+                                      group.debut
                                     }{" "}
                                     –{" "}
                                     {
-                                      activity.fin
+                                      group.fin
                                     }
+
                                   </div>
 
                                 </div>
