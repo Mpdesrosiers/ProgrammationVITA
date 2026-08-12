@@ -88,19 +88,6 @@ function getColumn(item, columnId) {
   return column?.text || "";
 }
 
-/*
- * IMPORTANT :
- * On utilise le "text" de Monday pour la date.
- *
- * Le "value" contient parfois une date UTC différente.
- * Exemple :
- *
- * text  → 2026-09-18 21:00
- * value → 2026-09-19 00:00
- *
- * La vraie date de programmation est celle affichée
- * dans "text".
- */
 function getDate(item) {
   const column = item.column_values?.find(
     (col) => col.id === COLUMN_IDS.debut
@@ -115,12 +102,6 @@ function getDate(item) {
   return match ? match[1] : "";
 }
 
-/*
- * Monday affiche l'heure de programmation avec un
- * décalage d'une heure dans notre récupération.
- *
- * On retire donc 1 heure.
- */
 function getTime(item, columnId) {
   const text = getColumn(item, columnId);
 
@@ -134,7 +115,8 @@ function getTime(item, columnId) {
     .split(":")
     .map(Number);
 
-  const totalMinutes = hours * 60 + minutes - 60;
+  const totalMinutes =
+    hours * 60 + minutes - 60;
 
   return minutesToTime(totalMinutes);
 }
@@ -150,18 +132,19 @@ function timeToMinutes(time) {
 }
 
 function minutesToTime(totalMinutes) {
-  /*
-   * Permet également de gérer minuit.
-   */
   totalMinutes =
     ((totalMinutes % 1440) + 1440) % 1440;
 
-  const hours = Math.floor(totalMinutes / 60);
+  const hours = Math.floor(
+    totalMinutes / 60
+  );
+
   const minutes = totalMinutes % 60;
 
-  return `${String(hours).padStart(2, "0")}:${String(
-    minutes
-  ).padStart(2, "0")}`;
+  return `${String(hours).padStart(
+    2,
+    "0"
+  )}:${String(minutes).padStart(2, "0")}`;
 }
 
 function App() {
@@ -179,10 +162,6 @@ function App() {
 
   const [draggedActivity, setDraggedActivity] =
     useState(null);
-
-  /*
-   * CHARGEMENT DES DONNÉES MONDAY
-   */
 
   useEffect(() => {
     async function loadActivities() {
@@ -281,7 +260,6 @@ function App() {
         setError("");
       } catch (err) {
         console.error(err);
-
         setError(err.message);
       } finally {
         setLoading(false);
@@ -290,10 +268,6 @@ function App() {
 
     loadActivities();
   }, []);
-
-  /*
-   * ACTIVITÉS DU JOUR SÉLECTIONNÉ
-   */
 
   const selectedActivities =
     useMemo(() => {
@@ -305,12 +279,6 @@ function App() {
       activities,
       selectedDay,
     ]);
-
-  /*
-   * HAUTEUR DU BLOC
-   *
-   * 30 minutes = 56 px
-   */
 
   function getActivityHeight(
     activity
@@ -329,10 +297,6 @@ function App() {
       42
     );
   }
-
-  /*
-   * DRAG & DROP
-   */
 
   function handleDragStart(
     activity
@@ -612,12 +576,12 @@ function App() {
                                       activity
                                     )
                                   }
-                                  className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md p-2 text-xs font-semibold text-white shadow-lg active:cursor-grabbing"
+                                  className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 border-[#151619] p-2 text-xs font-semibold text-white shadow-lg active:cursor-grabbing"
                                   style={{
                                     height:
                                       getActivityHeight(
                                         activity
-                                      ),
+                                      ) - 4,
                                     backgroundColor:
                                       zoneColors[
                                         activity
