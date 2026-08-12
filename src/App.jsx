@@ -110,7 +110,18 @@ function getTime(item, columnId) {
 
   const match = text.match(/(\d{2}:\d{2})$/);
 
-  return match ? match[1] : "";
+  if (!match) return "";
+
+  const [hours, minutes] = match[1]
+    .split(":")
+    .map(Number);
+
+  // Monday nous renvoie une heure décalée d'une heure.
+  // On retire donc 1 heure pour retrouver l'heure
+  // affichée dans notre programmation.
+  const totalMinutes = hours * 60 + minutes - 60;
+
+  return minutesToTime(totalMinutes);
 }
 
 function timeToMinutes(time) {
