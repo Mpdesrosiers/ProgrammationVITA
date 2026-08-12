@@ -710,6 +710,51 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    function handleUndoShortcut(event) {
+      const isUndo =
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "z" &&
+        !event.shiftKey;
+
+      if (!isUndo || event.repeat) return;
+
+      const target = event.target;
+      const isEditingField =
+        target instanceof HTMLElement &&
+        (
+          target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(
+            target.tagName
+          )
+        );
+
+      if (isEditingField) return;
+
+      const canUndo =
+        history.some(
+          (entry) => entry.before?.length
+        );
+
+      if (!canUndo || undoing) return;
+
+      event.preventDefault();
+      handleUndo();
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleUndoShortcut
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleUndoShortcut
+      );
+    };
+  }, [history, activities, undoing]);
+
   /*
    * ================================
    * GROUPES
