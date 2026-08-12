@@ -356,6 +356,9 @@ function App() {
 
             mondayId: item.name,
 
+            updatedAt:
+              item.updated_at || "",
+
             activite: getColumn(
               item,
               COLUMN_IDS.activite
@@ -424,6 +427,58 @@ function App() {
   useEffect(() => {
     loadActivities();
   }, []);
+
+  /*
+   * Synchronisation collaborative silencieuse.
+   * On la met en pause pendant une interaction pour ne pas
+   * remplacer un changement local en cours.
+   */
+
+  useEffect(() => {
+    const isBusy =
+      editingItem ||
+      creatingActivity ||
+      draggedGroup ||
+      saving ||
+      editSaving ||
+      createSaving;
+
+    if (isBusy) return;
+
+    const refresh = () => {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        loadActivities(true);
+      }
+    };
+
+    const interval = setInterval(
+      refresh,
+      10000
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      refresh
+    );
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener(
+        "visibilitychange",
+        refresh
+      );
+    };
+  }, [
+    editingItem,
+    creatingActivity,
+    draggedGroup,
+    saving,
+    editSaving,
+    createSaving,
+  ]);
 
   /*
    * ================================
@@ -781,6 +836,9 @@ function App() {
                     itemId:
                       activity.id,
 
+                    expectedUpdatedAt:
+                      activity.updatedAt,
+
                     startDate:
                       activity.date,
 
@@ -1021,6 +1079,9 @@ function App() {
               body: JSON.stringify({
                 itemId: activity.id,
 
+                expectedUpdatedAt:
+                  activity.updatedAt,
+
                 activite:
                   editForm.activite,
 
@@ -1112,6 +1173,9 @@ function App() {
                     body: JSON.stringify({
                       itemId:
                         activity.id,
+
+                      expectedUpdatedAt:
+                        activity.updatedAt,
 
                       startDate:
                         newDate,
