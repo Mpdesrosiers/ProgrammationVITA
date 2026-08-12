@@ -146,22 +146,46 @@ function getTime(item, columnId) {
 
   if (!text) return "";
 
-  const match = text.match(/(\d{2}:\d{2})$/);
+  const dateMatch = text.match(
+    /^(\d{4})-(\d{2})-(\d{2})/
+  );
+  const timeMatch = text.match(
+    /(\d{2}):(\d{2})(?::\d{2})?$/
+  );
 
-  if (!match) return "";
+  if (!dateMatch || !timeMatch) return "";
 
-  const [hours, minutes] = match[1]
-    .split(":")
-    .map(Number);
+  // Les colonnes Date de l'API Monday sont en UTC.
+  // On les convertit dans le même fuseau que Monday
+  // pour que les deux interfaces affichent la même heure.
+  const utcDate = new Date(Date.UTC(
+    Number(dateMatch[1]),
+    Number(dateMatch[2]) - 1,
+    Number(dateMatch[3]),
+    Number(timeMatch[1]),
+    Number(timeMatch[2])
+  ));
 
-  // Monday nous renvoie une heure décalée d'une heure.
-  // On retire donc 1 heure pour retrouver l'heure
-  // affichée dans notre programmation.
+  const parts = new Intl.DateTimeFormat(
+    "fr-CA",
+    {
+      timeZone: "America/Toronto",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }
+  ).formatToParts(utcDate);
 
-  const totalMinutes =
-    hours * 60 + minutes - 60;
+  const hour = parts.find(
+    (part) => part.type === "hour"
+  )?.value;
+  const minute = parts.find(
+    (part) => part.type === "minute"
+  )?.value;
 
-  return minutesToTime(totalMinutes);
+  return hour && minute
+    ? `${hour}:${minute}`
+    : "";
 }
 
 function timeToMinutes(time) {
