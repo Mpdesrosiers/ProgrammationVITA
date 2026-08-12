@@ -11,10 +11,26 @@ const zones = [
 ];
 
 const days = [
-  { label: "Jeudi", date: "2026-09-17" },
-  { label: "Vendredi", date: "2026-09-18" },
-  { label: "Samedi", date: "2026-09-19" },
-  { label: "Dimanche", date: "2026-09-20" },
+  {
+    label: "Jeudi",
+    mondayLabel: "sept. 17",
+    date: "2026-09-17",
+  },
+  {
+    label: "Vendredi",
+    mondayLabel: "sept. 18",
+    date: "2026-09-18",
+  },
+  {
+    label: "Samedi",
+    mondayLabel: "sept. 19",
+    date: "2026-09-19",
+  },
+  {
+    label: "Dimanche",
+    mondayLabel: "sept. 20",
+    date: "2026-09-20",
+  },
 ];
 
 const times = [
@@ -1260,7 +1276,7 @@ function App() {
             jour:
               days.find(
                 (day) => day.date === newDate
-              )?.label || "",
+              )?.mondayLabel || "",
             volet: createForm.volet,
             zone: newZone,
             mode: createForm.mode,
