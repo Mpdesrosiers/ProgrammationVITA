@@ -341,7 +341,14 @@ export default async function handler(req, res) {
         startTime,
         endDate,
         endTime,
+        jour,
+        volet,
         zone,
+        mode,
+        status,
+        affichage,
+        categorieCouleur,
+        notes,
       } = req.body || {};
 
       if (!activite?.trim()) {
@@ -459,6 +466,48 @@ export default async function handler(req, res) {
           label: zone,
         },
       };
+
+      if (jour?.trim()) {
+        columnValues[COLUMN_IDS.jour] = {
+          labels: [jour.trim()],
+        };
+      }
+
+      if (volet?.trim()) {
+        columnValues[COLUMN_IDS.volet] = {
+          labels: [volet.trim()],
+        };
+      }
+
+      if (mode?.trim()) {
+        columnValues[COLUMN_IDS.mode] = {
+          labels: [mode.trim()],
+        };
+      }
+
+      if (status?.trim()) {
+        columnValues[COLUMN_IDS.status] = {
+          label: status.trim(),
+        };
+      }
+
+      if (affichage?.trim()) {
+        columnValues[COLUMN_IDS.affichage] =
+          affichage.trim();
+      }
+
+      if (categorieCouleur?.trim()) {
+        columnValues[
+          COLUMN_IDS.categorieCouleur
+        ] = {
+          label: categorieCouleur.trim(),
+        };
+      }
+
+      if (notes?.trim()) {
+        columnValues[COLUMN_IDS.notes] =
+          notes.trim();
+      }
 
       const updateMutation = `
         mutation {
