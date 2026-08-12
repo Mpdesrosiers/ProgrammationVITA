@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
     /*
      * ============================================================
-     * OUTIL MONDAY
+     * REQUÊTE MONDAY
      * ============================================================
      */
 
@@ -74,16 +74,16 @@ export default async function handler(req, res) {
 
     /*
      * ============================================================
-     * CONVERSION DES HEURES
+     * CONVERSION APP → MONDAY
      * ============================================================
      *
-     * Notre application :
+     * Dans l'application :
      * 09:00
      *
-     * Monday :
+     * Dans Monday :
      * 10:00
      *
-     * On garde donc ton système actuel de +1 h.
+     * On conserve donc ton système actuel de +1 heure.
      */
 
     function addOneHourToDateTime(date, time) {
@@ -91,139 +91,145 @@ export default async function handler(req, res) {
         .split(":")
         .map(Number);
 
-      const result = new Date(
-        `${date}T${String(hours).padStart(
-          2,
-          "0"
-        )}:${String(minutes).padStart(
-          2,
-          "0"
-        )}:00`
+      let totalMinutes =
+        hours * 60 + minutes + 60;
+
+      let newDate = date;
+
+      if (totalMinutes >= 1440) {
+        totalMinutes -= 1440;
+
+        const dateObject = new Date(
+          `${date}T00:00:00`
+        );
+
+        dateObject.setDate(
+          dateObject.getDate() + 1
+        );
+
+        newDate =
+          dateObject
+            .toISOString()
+            .slice(0, 10);
+      }
+
+      const newHours = Math.floor(
+        totalMinutes / 60
       );
 
-      result.setHours(
-        result.getHours() + 1
-      );
-
-      const year =
-        result.getFullYear();
-
-      const month = String(
-        result.getMonth() + 1
-      ).padStart(2, "0");
-
-      const day = String(
-        result.getDate()
-      ).padStart(2, "0");
-
-      const newHours = String(
-        result.getHours()
-      ).padStart(2, "0");
-
-      const newMinutes = String(
-        result.getMinutes()
-      ).padStart(2, "0");
+      const newMinutes =
+        totalMinutes % 60;
 
       return {
-        date: `${year}-${month}-${day}`,
-        time: `${newHours}:${newMinutes}:00`,
+        date: newDate,
+        time:
+          `${String(newHours).padStart(2, "0")}:` +
+          `${String(newMinutes).padStart(2, "0")}:00`,
       };
     }
 
     /*
      * ============================================================
-     * RÉCUPÉRER UN ITEM PRÉCIS DEPUIS MONDAY
+     * CONVERSION MONDAY → APP
      * ============================================================
      *
-     * Sert à vérifier que Monday a réellement enregistré
-     * les changements.
+     * IMPORTANT :
+     * On lit "value" de la colonne Date plutôt que "text".
+     *
+     * Cela évite les problèmes de formatage de Monday.
      */
 
-    async function getMondayItem(itemId) {
-      const query = `
-        query {
-          boards(ids: [${BOARD_ID}]) {
-            items_page(
-              query_params: {
-                rules: [
-                  {
-                    column_id: "name"
-                    compare_value: ["${itemId}"]
-                    operator: any_of
-                  }
-                ]
-              }
-              limit: 500
-            ) {
-              items {
-                id
-                name
-                column_values {
-                  id
-                  text
-                  value
-                }
-              }
-            }
-          }
-        }
-      `;
-
-      /*
-       * On ne dépend pas du filtre ci-dessus pour trouver
-       * l'item : on récupère directement les items du board
-       * et on cherche son ID côté serveur.
-       */
-
-      const fallbackQuery = `
-        query {
-          boards(ids: [${BOARD_ID}]) {
-            items_page(limit: 500) {
-              items {
-                id
-                name
-                column_values {
-                  id
-                  text
-                  value
-                }
-              }
-            }
-          }
-        }
-      `;
-
-      const data =
-        await mondayRequest(
-          fallbackQuery
-        );
-
-      const items =
-        data.data?.boards?.[0]
-          ?.items_page?.items || [];
-
-      const item = items.find(
-        (item) =>
-          String(item.id) ===
-          String(itemId)
-      );
-
-      if (!item) {
-        throw new Error(
-          `Impossible de retrouver l'item ${itemId} dans Monday après la modification.`
-        );
+    function parseMondayDateValue(column) {
+      if (!column) {
+        return null;
       }
 
-      return item;
+      if (!column.value) {
+        return null;
+      }
+
+      try {
+        const parsed =
+          JSON.parse(column.value);
+
+        if (!parsed.date) {
+          return null;
+        }
+
+        return {
+          date: parsed.date,
+          time:
+            parsed.time ||
+            "00:00:00",
+        };
+      } catch (error) {
+        console.error(
+          "Impossible de parser la valeur Monday:",
+          column.value
+        );
+
+        return null;
+      }
+    }
+
+    /*
+     * Retire 1 heure à une valeur Monday
+     * pour revenir à l'heure de l'application.
+     */
+
+    function subtractOneHourFromMonday(
+      date,
+      time
+    ) {
+      const [hours, minutes] = time
+        .substring(0, 5)
+        .split(":")
+        .map(Number);
+
+      let totalMinutes =
+        hours * 60 + minutes - 60;
+
+      let newDate = date;
+
+      if (totalMinutes < 0) {
+        totalMinutes += 1440;
+
+        const dateObject = new Date(
+          `${date}T00:00:00`
+        );
+
+        dateObject.setDate(
+          dateObject.getDate() - 1
+        );
+
+        newDate =
+          dateObject
+            .toISOString()
+            .slice(0, 10);
+      }
+
+      const newHours = Math.floor(
+        totalMinutes / 60
+      );
+
+      const newMinutes =
+        totalMinutes % 60;
+
+      return {
+        date: newDate,
+        time:
+          `${String(newHours).padStart(2, "0")}:` +
+          `${String(newMinutes).padStart(2, "0")}`,
+      };
     }
 
     /*
      * ============================================================
-     * GET
+     * RÉCUPÉRER TOUS LES ITEMS
      * ============================================================
      */
 
-    if (req.method === "GET") {
+    async function getAllMondayItems() {
       const query = `
         query {
           boards(ids: [${BOARD_ID}]) {
@@ -249,7 +255,59 @@ export default async function handler(req, res) {
       const data =
         await mondayRequest(query);
 
-      return res.status(200).json(data);
+      return (
+        data.data?.boards?.[0]
+          ?.items_page?.items || []
+      );
+    }
+
+    /*
+     * ============================================================
+     * RÉCUPÉRER UN ITEM
+     * ============================================================
+     */
+
+    async function getMondayItem(itemId) {
+      const items =
+        await getAllMondayItems();
+
+      const item = items.find(
+        (currentItem) =>
+          String(currentItem.id) ===
+          String(itemId)
+      );
+
+      if (!item) {
+        throw new Error(
+          `Impossible de retrouver l'activité ${itemId} dans Monday.`
+        );
+      }
+
+      return item;
+    }
+
+    /*
+     * ============================================================
+     * GET
+     * ============================================================
+     */
+
+    if (req.method === "GET") {
+      const items =
+        await getAllMondayItems();
+
+      return res.status(200).json({
+        data: {
+          boards: [
+            {
+              id: BOARD_ID,
+              items_page: {
+                items,
+              },
+            },
+          ],
+        },
+      });
     }
 
     /*
@@ -328,7 +386,7 @@ export default async function handler(req, res) {
         );
 
       /*
-       * CRÉATION DE L'ITEM
+       * Créer l'item.
        */
 
       const createMutation = `
@@ -362,7 +420,7 @@ export default async function handler(req, res) {
       }
 
       /*
-       * VALEURS À ENREGISTRER
+       * Ajouter les informations.
        */
 
       const columnValues = {
@@ -383,10 +441,6 @@ export default async function handler(req, res) {
           index: zoneIndex,
         },
       };
-
-      /*
-       * MISE À JOUR DES COLONNES
-       */
 
       const updateMutation = `
         mutation {
@@ -409,12 +463,23 @@ export default async function handler(req, res) {
         }
       `;
 
-      await mondayRequest(
-        updateMutation
-      );
+      const updateData =
+        await mondayRequest(
+          updateMutation
+        );
+
+      if (
+        !updateData.data
+          ?.change_multiple_column_values
+          ?.id
+      ) {
+        throw new Error(
+          "Monday n'a pas confirmé l'ajout des informations de l'activité."
+        );
+      }
 
       /*
-       * VÉRIFICATION DIRECTE DANS MONDAY
+       * Relire l'item.
        */
 
       const savedItem =
@@ -422,61 +487,19 @@ export default async function handler(req, res) {
           newItem.id
         );
 
-      const savedStart =
-        savedItem.column_values?.find(
-          (column) =>
-            column.id ===
-            COLUMN_IDS.debut
-        );
-
-      const savedEnd =
-        savedItem.column_values?.find(
-          (column) =>
-            column.id ===
-            COLUMN_IDS.fin
-        );
-
-      const savedZone =
-        savedItem.column_values?.find(
-          (column) =>
-            column.id ===
-            COLUMN_IDS.zone
-        );
-
-      console.log(
-        "NOUVEL ITEM VÉRIFIÉ DANS MONDAY:",
-        JSON.stringify(
-          {
-            id: savedItem.id,
-            debut: savedStart,
-            fin: savedEnd,
-            zone: savedZone,
-          },
-          null,
-          2
-        )
-      );
-
       return res.status(200).json({
         success: true,
         verified: true,
-
         itemId: newItem.id,
-
         activite:
           activite.trim(),
-
         startDate,
         startTime,
-
         endDate,
         endTime,
-
         zone,
-
         mondayStart,
         mondayEnd,
-
         mondayItem:
           savedItem,
       });
@@ -552,6 +575,22 @@ export default async function handler(req, res) {
       }
 
       /*
+       * Vérifier que l'item existe réellement.
+       */
+
+      const existingItem =
+        await getMondayItem(
+          itemId
+        );
+
+      if (!existingItem) {
+        return res.status(404).json({
+          error:
+            "Activité introuvable dans Monday.",
+        });
+      }
+
+      /*
        * Conversion App → Monday
        */
 
@@ -568,7 +607,7 @@ export default async function handler(req, res) {
         );
 
       /*
-       * VALEURS À ENVOYER À MONDAY
+       * Valeurs à envoyer.
        */
 
       const columnValues = {
@@ -588,7 +627,7 @@ export default async function handler(req, res) {
       };
 
       /*
-       * Si le popup fournit un nom,
+       * Si un nom est fourni,
        * on le modifie également.
        */
 
@@ -603,7 +642,7 @@ export default async function handler(req, res) {
       }
 
       console.log(
-        "ENVOI À MONDAY:",
+        "MODIFICATION MONDAY",
         JSON.stringify(
           {
             itemId,
@@ -615,7 +654,7 @@ export default async function handler(req, res) {
       );
 
       /*
-       * MUTATION
+       * Mutation Monday.
        */
 
       const mutation = `
@@ -656,8 +695,7 @@ export default async function handler(req, res) {
 
       /*
        * ========================================================
-       * TRÈS IMPORTANT :
-       * ON RELIT MONDAY APRÈS LA MUTATION
+       * RELIRE MONDAY
        * ========================================================
        */
 
@@ -666,45 +704,75 @@ export default async function handler(req, res) {
           itemId
         );
 
-      const savedStart =
+      /*
+       * Récupérer les colonnes Date.
+       */
+
+      const savedStartColumn =
         savedItem.column_values?.find(
           (column) =>
             column.id ===
             COLUMN_IDS.debut
         );
 
-      const savedEnd =
+      const savedEndColumn =
         savedItem.column_values?.find(
           (column) =>
             column.id ===
             COLUMN_IDS.fin
         );
 
-      const savedZone =
-        savedItem.column_values?.find(
-          (column) =>
-            column.id ===
-            COLUMN_IDS.zone
+      /*
+       * Lire leurs valeurs JSON.
+       */
+
+      const savedStart =
+        parseMondayDateValue(
+          savedStartColumn
         );
 
-      console.log(
-        "VALEURS RÉELLEMENT PRÉSENTES DANS MONDAY:",
-        JSON.stringify(
-          {
-            itemId,
-            debut: savedStart,
-            fin: savedEnd,
-            zone: savedZone,
-          },
-          null,
-          2
-        )
-      );
+      const savedEnd =
+        parseMondayDateValue(
+          savedEndColumn
+        );
+
+      if (!savedStart) {
+        throw new Error(
+          "Monday a répondu, mais la date de début n'a pas pu être relue."
+        );
+      }
+
+      if (!savedEnd) {
+        throw new Error(
+          "Monday a répondu, mais la date de fin n'a pas pu être relue."
+        );
+      }
 
       /*
-       * On vérifie que Monday contient bien
-       * les valeurs qu'on vient de lui envoyer.
+       * Comparaison directe des valeurs
+       * envoyées à Monday.
+       *
+       * On compare les valeurs Monday brutes,
+       * donc on ne dépend plus du texte affiché.
        */
+
+      const actualStartDate =
+        savedStart.date;
+
+      const actualStartTime =
+        savedStart.time.substring(
+          0,
+          5
+        );
+
+      const actualEndDate =
+        savedEnd.date;
+
+      const actualEndTime =
+        savedEnd.time.substring(
+          0,
+          5
+        );
 
       const expectedStartDate =
         mondayStart.date;
@@ -724,40 +792,24 @@ export default async function handler(req, res) {
           5
         );
 
-      const mondayStartText =
-        savedStart?.text || "";
-
-      const mondayEndText =
-        savedEnd?.text || "";
-
       const startMatches =
-        mondayStartText.includes(
-          expectedStartDate
-        ) &&
-        mondayStartText.includes(
-          expectedStartTime
-        );
+        actualStartDate ===
+          expectedStartDate &&
+        actualStartTime ===
+          expectedStartTime;
 
       const endMatches =
-        mondayEndText.includes(
-          expectedEndDate
-        ) &&
-        mondayEndText.includes(
-          expectedEndTime
-        );
+        actualEndDate ===
+          expectedEndDate &&
+        actualEndTime ===
+          expectedEndTime;
 
-      /*
-       * Si Monday ne contient pas les bonnes valeurs,
-       * ON NE DIT PAS QUE C'EST SAUVEGARDÉ.
-       */
-
-      if (
-        !startMatches ||
-        !endMatches
-      ) {
-        console.error(
-          "VÉRIFICATION MONDAY ÉCHOUÉE",
+      console.log(
+        "VÉRIFICATION FINALE MONDAY:",
+        JSON.stringify(
           {
+            itemId,
+
             expected: {
               startDate:
                 expectedStartDate,
@@ -770,17 +822,33 @@ export default async function handler(req, res) {
             },
 
             actual: {
-              start:
-                mondayStartText,
-              end:
-                mondayEndText,
+              startDate:
+                actualStartDate,
+              startTime:
+                actualStartTime,
+              endDate:
+                actualEndDate,
+              endTime:
+                actualEndTime,
             },
-          }
-        );
+          },
+          null,
+          2
+        )
+      );
 
+      /*
+       * SI LES VALEURS NE CORRESPONDENT PAS,
+       * ON RETOURNE UNE VRAIE ERREUR.
+       */
+
+      if (
+        !startMatches ||
+        !endMatches
+      ) {
         return res.status(500).json({
           error:
-            "Monday n'a pas enregistré les heures demandées.",
+            "Monday n'a pas enregistré exactement les heures demandées.",
 
           expected: {
             startDate:
@@ -794,10 +862,14 @@ export default async function handler(req, res) {
           },
 
           actual: {
-            start:
-              mondayStartText,
-            end:
-              mondayEndText,
+            startDate:
+              actualStartDate,
+            startTime:
+              actualStartTime,
+            endDate:
+              actualEndDate,
+            endTime:
+              actualEndTime,
           },
 
           mondayItem:
@@ -806,7 +878,9 @@ export default async function handler(req, res) {
       }
 
       /*
-       * TOUT EST OK
+       * ========================================================
+       * SUCCÈS
+       * ========================================================
        */
 
       return res.status(200).json({
