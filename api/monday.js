@@ -1272,6 +1272,55 @@ export default async function handler(req, res) {
 
     /*
      * ============================================================
+     * DELETE — SUPPRIMER UNE ACTIVITÉ
+     * ============================================================
+     */
+
+    if (req.method === "DELETE") {
+      const { itemId } =
+        req.body || {};
+
+      if (!itemId) {
+        return res.status(400).json({
+          error: "itemId manquant.",
+        });
+      }
+
+      await getMondayItem(itemId);
+
+      const mutation = `
+        mutation {
+          delete_item(
+            item_id: ${Number(itemId)}
+          ) {
+            id
+          }
+        }
+      `;
+
+      const data =
+        await mondayRequest(mutation);
+
+      const deletedId =
+        data.data?.delete_item?.id;
+
+      if (
+        String(deletedId) !==
+        String(itemId)
+      ) {
+        throw new Error(
+          "Monday n'a pas confirmé la suppression."
+        );
+      }
+
+      return res.status(200).json({
+        success: true,
+        deletedItemId: deletedId,
+      });
+    }
+
+    /*
+     * ============================================================
      * MÉTHODE NON SUPPORTÉE
      * ============================================================
      */
