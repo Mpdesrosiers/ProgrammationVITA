@@ -156,8 +156,8 @@ function getTime(item, columnId) {
 
   /*
    * Monday nous renvoie une heure décalée d'une heure.
-   * On retire donc 1 heure pour retrouver
-   * l'heure affichée dans notre programmation.
+   * On retire donc 1 heure pour retrouver l'heure
+   * affichée dans notre programmation.
    */
   const totalMinutes =
     hours * 60 + minutes - 60;
@@ -191,15 +191,6 @@ function minutesToTime(totalMinutes) {
   )}:${String(minutes).padStart(2, "0")}`;
 }
 
-/*
- * Détermine la couleur d'une activité.
- *
- * Montage/Démontage et Arrivée/Départ
- * gardent toujours leur couleur spéciale.
- *
- * Toutes les autres activités utilisent
- * la couleur de leur zone.
- */
 function getActivityColor(activity) {
   const category =
     activity.categorieCouleur?.trim();
@@ -235,9 +226,11 @@ function App() {
   const [draggedGroup, setDraggedGroup] =
     useState(null);
 
-  /*
-   * CHARGEMENT DES DONNÉES MONDAY
-   */
+  const [saving, setSaving] =
+    useState(false);
+
+  const [saveMessage, setSaveMessage] =
+    useState("");
 
   useEffect(() => {
     async function loadActivities() {
@@ -345,10 +338,6 @@ function App() {
     loadActivities();
   }, []);
 
-  /*
-   * ACTIVITÉS DU JOUR
-   */
-
   const selectedActivities =
     useMemo(() => {
       return activities.filter(
@@ -359,16 +348,6 @@ function App() {
       activities,
       selectedDay,
     ]);
-
-  /*
-   * REGROUPEMENT
-   *
-   * Même journée
-   * + même zone
-   * + même heure de début
-   * + même heure de fin
-   * = un seul bloc.
-   */
 
   const activityGroups =
     useMemo(() => {
@@ -403,12 +382,6 @@ function App() {
       return Object.values(groups);
     }, [selectedActivities]);
 
-  /*
-   * HAUTEUR DES BLOCS
-   *
-   * 30 minutes = 56 px
-   */
-
   function getGroupHeight(group) {
     const start =
       timeToMinutes(group.debut);
@@ -425,22 +398,12 @@ function App() {
     );
   }
 
-  /*
-   * DRAG START
-   */
-
   function handleDragStart(group) {
     setDraggedGroup(group);
+    setSaveMessage("");
   }
 
-  /*
-   * DROP
-   *
-   * Toutes les activités du groupe
-   * sont déplacées ensemble.
-   */
-
-  function handleDrop(
+  async function handleDrop(
     event,
     newTime,
     newZone
@@ -468,11 +431,20 @@ function App() {
     const newEnd =
       newStart + duration;
 
+    const newStartTime =
+      minutesToTime(newStart);
+
+    const newEndTime =
+      minutesToTime(newEnd);
+
     const draggedIds =
       draggedGroup.activities.map(
         (activity) => activity.id
       );
 
+    /*
+     * Mise à jour immédiate de l'affichage.
+     */
     setActivities((current) =>
       current.map((activity) =>
         draggedIds.includes(
@@ -481,26 +453,182 @@ function App() {
           ? {
               ...activity,
               zone: newZone,
-              debut:
-                minutesToTime(
-                  newStart
-                ),
-              fin:
-                minutesToTime(
-                  newEnd
-                ),
+              debut: newStartTime,
+              fin: newEndTime,
             }
           : activity
       )
     );
 
     setDraggedGroup(null);
+    setSaving(true);
+    setSaveMessage("");
+
+    try {
+      /*
+       * On sauvegarde chaque activité
+       * du groupe dans Monday.
+       */
+      for (
+        const activity of
+          draggedGroup.activities
+      ) {
+        const response = await fetch(
+          "/api/monday",
+          {
+            method: "PUT",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              itemId: activity.id,
+
+              startDate:
+                activity.date,
+
+              startTime:
+                newStartTime,
+
+              endDate:
+                activity.date,
+
+              endTime:
+                newEndTime,
+
+              zone: newZone,
+            }),
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          data.error
+        ) {
+          throw new Error(
+            data.details?.[0]
+              ?.message ||
+              data.error ||
+              "Erreur lors de la sauvegarde dans Monday."
+          );
+        }
+      }
+
+      setSaveMessage(
+        "✓ Modification enregistrée dans Monday"
+      );
+    } catch (err) {
+      console.error(err);
+
+      setSaveMessage(
+        "⚠️ Le changement est affiché, mais la sauvegarde dans Monday a échoué."
+      );
+
+      /*
+       * On recharge les données de Monday
+       * pour remettre l'affichage dans l'état
+       * réellement enregistré.
+       */
+      try {
+        const response =
+          await fetch("/api/monday");
+
+        const data =
+          await response.json();
+
+        if (response.ok && !data.error) {
+          const items =
+            data.data?.boards?.[0]
+              ?.items_page?.items || [];
+
+          const formattedActivities =
+            items
+              .map((item) => ({
+                id: item.id,
+                mondayId: item.name,
+
+                activite: getColumn(
+                  item,
+                  COLUMN_IDS.activite
+                ),
+
+                date: getDate(item),
+
+                debut: getTime(
+                  item,
+                  COLUMN_IDS.debut
+                ),
+
+                fin: getTime(
+                  item,
+                  COLUMN_IDS.fin
+                ),
+
+                volet: getColumn(
+                  item,
+                  COLUMN_IDS.volet
+                ),
+
+                zone: getColumn(
+                  item,
+                  COLUMN_IDS.zone
+                ),
+
+                mode: getColumn(
+                  item,
+                  COLUMN_IDS.mode
+                ),
+
+                status: getColumn(
+                  item,
+                  COLUMN_IDS.status
+                ),
+
+                affichage:
+                  getColumn(
+                    item,
+                    COLUMN_IDS.affichage
+                  ),
+
+                categorieCouleur:
+                  getColumn(
+                    item,
+                    COLUMN_IDS.categorieCouleur
+                  ),
+
+                notes: getColumn(
+                  item,
+                  COLUMN_IDS.notes
+                ),
+              }))
+              .filter(
+                (activity) =>
+                  activity.activite &&
+                  activity.debut &&
+                  activity.fin
+              );
+
+          setActivities(
+            formattedActivities
+          );
+        }
+      } catch (reloadError) {
+        console.error(
+          reloadError
+        );
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div className="min-h-screen bg-[#151619] text-[#ebebed]">
-
-      {/* HEADER */}
 
       <header className="border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
 
@@ -519,8 +647,6 @@ function App() {
               </h1>
 
             </div>
-
-            {/* JOURNÉES */}
 
             <div className="flex gap-2">
 
@@ -557,8 +683,6 @@ function App() {
 
       </header>
 
-      {/* CALENDRIER */}
-
       <main className="overflow-x-auto p-6">
 
         {loading && (
@@ -590,12 +714,9 @@ function App() {
 
             <>
 
-              {/* INFORMATIONS */}
-
               <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
 
                 <div className="text-[#8580d9]">
-
                   {
                     selectedActivities.length
                   }{" "}
@@ -604,18 +725,32 @@ function App() {
                   1
                     ? "s"
                     : ""}
-
                 </div>
 
-                <div className="text-[#777980]">
-                  Glissez-déposez un
-                  groupe pour déplacer
-                  toutes ses activités
+                <div className="flex items-center gap-4">
+
+                  {saving && (
+                    <span className="text-[#d9ad7c]">
+                      Sauvegarde…
+                    </span>
+                  )}
+
+                  {!saving &&
+                    saveMessage && (
+                      <span className="text-[#8fba91]">
+                        {saveMessage}
+                      </span>
+                    )}
+
+                  <span className="text-[#777980]">
+                    Glissez-déposez un
+                    groupe pour déplacer
+                    toutes ses activités
+                  </span>
+
                 </div>
 
               </div>
-
-              {/* GRILLE */}
 
               <div
                 className="mx-auto grid min-w-[1400px] max-w-[1800px]"
@@ -625,11 +760,7 @@ function App() {
                 }}
               >
 
-                {/* COIN */}
-
                 <div className="border-b border-r border-[#303137] bg-[#151619]" />
-
-                {/* ZONES */}
 
                 {zones.map((zone) => (
 
@@ -656,21 +787,15 @@ function App() {
 
                 ))}
 
-                {/* LIGNES HORAIRES */}
-
                 {times.map((time) => (
 
                   <React.Fragment
                     key={time}
                   >
 
-                    {/* HEURE */}
-
                     <div className="flex h-14 items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
                       {time}
                     </div>
-
-                    {/* ZONES */}
 
                     {zones.map(
                       (zone) => {
@@ -708,12 +833,6 @@ function App() {
                             {groupsHere.map(
                               (group) => {
 
-                                /*
-                                 * La couleur est basée
-                                 * sur la catégorie spéciale
-                                 * ou sur la zone.
-                                 */
-
                                 const groupColor =
                                   getActivityColor(
                                     group
@@ -738,8 +857,10 @@ function App() {
                                         getGroupHeight(
                                           group
                                         ),
+
                                       backgroundColor:
                                         groupColor.background,
+
                                       borderColor:
                                         groupColor.border,
                                     }}
@@ -756,8 +877,6 @@ function App() {
                                         )
                                     }
                                   >
-
-                                    {/* ACTIVITÉS */}
 
                                     <div className="space-y-0.5">
 
@@ -789,8 +908,6 @@ function App() {
                                       )}
 
                                     </div>
-
-                                    {/* HEURES */}
 
                                     <div className="mt-1 text-[10px] font-medium opacity-70">
 
