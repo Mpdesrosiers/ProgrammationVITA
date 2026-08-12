@@ -344,73 +344,83 @@ function App() {
   /*
    * AUTO-SCROLL PENDANT LE DRAG
    *
-   * Lorsque la souris approche du haut ou du bas
-   * de l'écran pendant qu'un bloc est déplacé,
-   * la page défile automatiquement.
+   * Lorsque la souris approche du haut ou
+   * du bas de l'écran, la page défile.
    */
   useEffect(() => {
     if (!draggedGroup) return;
 
-    function handleWindowDragOver(event) {
-      const edgeSize = 100;
+    let animationFrame = null;
+
+    function handleDragOver(event) {
+      const edgeSize = 120;
       const maxSpeed = 18;
 
       const mouseY = event.clientY;
-      const windowHeight = window.innerHeight;
+      const windowHeight =
+        window.innerHeight;
 
-      /*
-       * Près du bas :
-       * plus la souris est proche du bord,
-       * plus le défilement est rapide.
-       */
+      let scrollAmount = 0;
+
       if (
         mouseY >
         windowHeight - edgeSize
       ) {
-        const distance =
-          windowHeight - mouseY;
-
         const intensity =
           1 -
-          distance / edgeSize;
+          (windowHeight - mouseY) /
+            edgeSize;
 
-        window.scrollBy(
-          0,
+        scrollAmount =
           Math.max(
             2,
             intensity * maxSpeed
-          )
-        );
-      }
-
-      /*
-       * Près du haut.
-       */
-      if (mouseY < edgeSize) {
+          );
+      } else if (
+        mouseY < edgeSize
+      ) {
         const intensity =
           1 -
           mouseY / edgeSize;
 
-        window.scrollBy(
-          0,
+        scrollAmount =
           -Math.max(
             2,
             intensity * maxSpeed
-          )
-        );
+          );
+      }
+
+      if (scrollAmount !== 0) {
+        if (!animationFrame) {
+          animationFrame =
+            requestAnimationFrame(() => {
+              window.scrollBy(
+                0,
+                scrollAmount
+              );
+
+              animationFrame = null;
+            });
+        }
       }
     }
 
     window.addEventListener(
       "dragover",
-      handleWindowDragOver
+      handleDragOver
     );
 
     return () => {
       window.removeEventListener(
         "dragover",
-        handleWindowDragOver
+        handleDragOver
       );
+
+      if (animationFrame) {
+        cancelAnimationFrame(
+          animationFrame
+        );
+      }
     };
   }, [draggedGroup]);
 
@@ -491,59 +501,124 @@ function App() {
   }
 
   /*
-   * Calcule l'heure exacte selon la position
-   * verticale de la souris dans la cellule.
+   * IMPORTANT :
+   *
+   * On ne détermine plus la position du drop
+   * à partir de la cellule qui reçoit l'événement.
+   *
+   * On cherche directement l'élément qui se trouve
+   * SOUS la souris.
+   *
+   * Ça permet au système de continuer à fonctionner
+   * correctement après un scroll.
    */
-  function getDropTimeFromMouse(event) {
-    const cell =
-      event.currentTarget;
+  function findCellUnderMouse(event) {
+    const elements =
+      document.elementsFromPoint(
+        event.clientX,
+        event.clientY
+      );
 
+    const cell =
+      elements.find(
+        (element) =>
+          element.dataset &&
+          element.dataset.time &&
+          element.dataset.zone
+      );
+
+    if (!cell) return null;
+
+    return {
+      element: cell,
+      time: cell.dataset.time,
+      zone: cell.dataset.zone,
+    };
+  }
+
+  /*
+   * Calcule la demi-heure exacte dans la cellule
+   * selon la position verticale de la souris.
+   *
+   * Chaque cellule représente 30 minutes.
+   */
+  function getPreciseDropTime(
+    cell,
+    clientY
+  ) {
     const rect =
       cell.getBoundingClientRect();
 
-    const y =
-      event.clientY - rect.top;
+    const relativeY =
+      clientY - rect.top;
 
-    const slotIndex =
-      Math.floor(y / 56);
+    /*
+     * Une cellule = 30 minutes.
+     * Si la souris est dans la moitié supérieure,
+     * on reste sur le début de la cellule.
+     *
+     * Si elle est dans la moitié inférieure,
+     * on passe à la prochaine demi-heure.
+     */
+    const half =
+      relativeY >= 28
+        ? 30
+        : 0;
 
-    const gridStart =
-      timeToMinutes("05:30");
-
-    const dropMinutes =
-      gridStart +
-      slotIndex * 30;
+    const baseTime =
+      timeToMinutes(
+        cell.dataset.time
+      );
 
     return minutesToTime(
-      dropMinutes
+      baseTime + half
     );
   }
 
-  function handleDragOverCell(
-    event,
-    zone
-  ) {
-    event.preventDefault();
-
+  /*
+   * Pendant le déplacement, on retrouve
+   * continuellement la cellule sous la souris.
+   */
+  function updateDragPreview(event) {
     if (!draggedGroup) return;
 
-    const dropTime =
-      getDropTimeFromMouse(event);
+    const target =
+      findCellUnderMouse(event);
+
+    if (!target) return;
+
+    const preciseTime =
+      getPreciseDropTime(
+        target.element,
+        event.clientY
+      );
 
     setDragPreview({
-      time: dropTime,
-      zone,
+      time: preciseTime,
+      zone: target.zone,
     });
   }
 
   async function handleDrop(
-    event,
-    newTime,
-    newZone
+    event
   ) {
     event.preventDefault();
 
     if (!draggedGroup) return;
+
+    const target =
+      findCellUnderMouse(event);
+
+    if (!target) return;
+
+    const newZone =
+      target.zone;
+
+    const newStartTime =
+      getPreciseDropTime(
+        target.element,
+        event.clientY
+      );
 
     const oldStart =
       timeToMinutes(
@@ -559,13 +634,12 @@ function App() {
       oldEnd - oldStart;
 
     const newStart =
-      timeToMinutes(newTime);
+      timeToMinutes(
+        newStartTime
+      );
 
     const newEnd =
       newStart + duration;
-
-    const newStartTime =
-      minutesToTime(newStart);
 
     const newEndTime =
       minutesToTime(newEnd);
@@ -668,6 +742,10 @@ function App() {
         "⚠️ Le changement est affiché, mais la sauvegarde dans Monday a échoué."
       );
 
+      /*
+       * Recharge les données de Monday
+       * si la sauvegarde échoue.
+       */
       try {
         const response =
           await fetch("/api/monday");
@@ -958,46 +1036,26 @@ function App() {
 
                           <div
                             key={`${time}-${zone}`}
+                            data-time={time}
+                            data-zone={zone}
                             onDragOver={(
                               event
-                            ) =>
-                              handleDragOverCell(
-                                event,
-                                zone
-                              )
-                            }
-                            onDrop={(
-                              event
                             ) => {
+                              event.preventDefault();
 
-                              const dropTime =
-                                getDropTimeFromMouse(
-                                  event
-                                );
-
-                              handleDrop(
-                                event,
-                                dropTime,
-                                zone
+                              updateDragPreview(
+                                event
                               );
                             }}
+                            onDrop={
+                              handleDrop
+                            }
                             className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
                           >
 
-                            {/* 
-                              APERÇU DU DROP
-
-                              z-50 = toujours par-dessus
-                              les blocs existants.
-
-                              pointer-events-none =
-                              la souris continue de
-                              contrôler la cellule située dessous.
-                            */}
-
                             {isPreview && (
                               <div
-                                className="pointer-events-none absolute left-1 right-1 top-1 z-50 rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
+                                className="pointer-events-none absolute left-1 right-1 top-1 z-[999] rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
                                 style={{
                                   height:
                                     draggedGroup
