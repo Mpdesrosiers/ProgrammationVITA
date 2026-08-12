@@ -224,6 +224,15 @@ function getActivityColor(activity) {
 }
 
 function App() {
+  const [authLoading, setAuthLoading] =
+    useState(true);
+
+  const [user, setUser] =
+    useState(null);
+
+  const [authError, setAuthError] =
+    useState("");
+
   const [selectedDay, setSelectedDay] =
     useState("2026-09-18");
 
@@ -283,6 +292,25 @@ function App() {
 
   const [copiedActivity, setCopiedActivity] =
     useState(null);
+
+  const [managingAccess, setManagingAccess] =
+    useState(false);
+
+  const [accessUsers, setAccessUsers] =
+    useState([]);
+
+  const [accessForm, setAccessForm] =
+    useState({
+      name: "",
+      email: "",
+      role: "Consultation",
+    });
+
+  const [accessError, setAccessError] =
+    useState("");
+
+  const [accessSaving, setAccessSaving] =
+    useState(false);
 
   /*
    * ================================
@@ -460,8 +488,49 @@ function App() {
   }
 
   useEffect(() => {
-    loadActivities();
+    async function loadSession() {
+      const params = new URLSearchParams(
+        window.location.search
+      );
+      const returnedError =
+        params.get("authError");
+
+      if (returnedError) {
+        setAuthError(returnedError);
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname
+        );
+      }
+
+      try {
+        const response = await fetch(
+          "/api/auth/session"
+        );
+        const data = await response.json();
+
+        if (response.ok && data.user) {
+          setUser(data.user);
+          await loadActivities();
+        } else {
+          setLoading(false);
+        }
+      } catch {
+        setAuthError(
+          "Impossible de vérifier la connexion."
+        );
+        setLoading(false);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+
+    loadSession();
   }, []);
+
+  const canModify =
+    user?.role === "Modification";
 
   /*
    * Synchronisation collaborative silencieuse.
@@ -470,6 +539,8 @@ function App() {
    */
 
   useEffect(() => {
+    if (!user) return;
+
     const isBusy =
       editingItem ||
       creatingActivity ||
@@ -507,6 +578,7 @@ function App() {
       );
     };
   }, [
+    user,
     editingItem,
     creatingActivity,
     draggedGroup,
@@ -1178,6 +1250,7 @@ function App() {
    */
 
   function openActivityEditor(activity) {
+    if (!canModify) return;
     setEditError("");
 
     setEditingItem({
@@ -1205,6 +1278,7 @@ function App() {
   }
 
   function openGroupEditor(group) {
+    if (!canModify) return;
     setEditError("");
 
     setEditingItem({
@@ -1241,6 +1315,7 @@ function App() {
     event,
     group
   ) {
+    if (!canModify) return;
     event.preventDefault();
     event.stopPropagation();
 
@@ -1300,6 +1375,7 @@ function App() {
     time = "05:30",
     zone = zones[0]
   ) {
+    if (!canModify) return;
     setCreateError("");
     setDuplicatingActivity(null);
 
@@ -1851,6 +1927,93 @@ function App() {
     URL.revokeObjectURL(url);
   }
 
+  async function loadAccessUsers() {
+    setAccessError("");
+    const response = await fetch(
+      "/api/access-users"
+    );
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      throw new Error(
+        data.error || "Impossible de charger les accès."
+      );
+    }
+    setAccessUsers(data.users || []);
+  }
+
+  async function openAccessManager() {
+    setManagingAccess(true);
+    try {
+      await loadAccessUsers();
+    } catch (error) {
+      setAccessError(error.message);
+    }
+  }
+
+  async function addAccessUser() {
+    setAccessSaving(true);
+    setAccessError("");
+    try {
+      const response = await fetch(
+        "/api/access-users",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(accessForm),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.error);
+      }
+      setAccessForm({
+        name: "",
+        email: "",
+        role: "Consultation",
+      });
+      await loadAccessUsers();
+    } catch (error) {
+      setAccessError(error.message);
+    } finally {
+      setAccessSaving(false);
+    }
+  }
+
+  async function updateAccessUser(
+    accessUser,
+    changes
+  ) {
+    setAccessSaving(true);
+    setAccessError("");
+    try {
+      const response = await fetch(
+        "/api/access-users",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            itemId: accessUser.id,
+            role: changes.role ?? accessUser.role,
+            active: changes.active ?? accessUser.active,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.error);
+      }
+      await loadAccessUsers();
+    } catch (error) {
+      setAccessError(error.message);
+    } finally {
+      setAccessSaving(false);
+    }
+  }
+
   /*
    * ================================
    * CRÉATION D'UNE ACTIVITÉ
@@ -2002,6 +2165,45 @@ function App() {
    * ================================
    */
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#151619] text-[#c9c9ce]">
+        Vérification de la connexion…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#151619] p-6 text-white">
+        <div className="w-full max-w-md rounded-2xl border border-[#3a3b42] bg-[#1b1c20] p-8 text-center shadow-2xl">
+          <div className="text-sm font-semibold text-[#8580d9]">
+            FESTIVAL VITA 2026
+          </div>
+          <h1 className="mt-2 text-2xl font-semibold">
+            Programmation
+          </h1>
+          <p className="mt-3 text-sm text-[#a1a1a8]">
+            Connectez-vous avec votre compte professionnel Sports Montréal.
+          </p>
+
+          {authError && (
+            <div className="mt-5 rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
+              {authError}
+            </div>
+          )}
+
+          <a
+            href="/api/auth/login"
+            className="mt-6 block rounded-lg bg-[#8580d9] px-5 py-3 font-semibold text-[#151619] hover:bg-[#9995e3]"
+          >
+            Se connecter avec Microsoft
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#151619] text-white">
 
@@ -2038,15 +2240,26 @@ function App() {
 
               {/* BOUTON AJOUTER */}
 
-              <button
-                type="button"
-                onClick={() =>
-                  openCreateEditor()
-                }
-                className="rounded-md bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] transition hover:bg-[#9995e3]"
-              >
-                + Ajouter une activité
-              </button>
+              {canModify && (
+                <>
+                  <button
+                    type="button"
+                    onClick={openAccessManager}
+                    className="rounded-md border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm font-semibold text-white hover:bg-[#404148]"
+                  >
+                    Gérer les accès
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openCreateEditor()
+                    }
+                    className="rounded-md bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] transition hover:bg-[#9995e3]"
+                  >
+                    + Ajouter une activité
+                  </button>
+                </>
+              )}
 
               <div className="flex gap-2">
 
@@ -2075,6 +2288,22 @@ function App() {
 
                 ))}
 
+              </div>
+
+              <div className="ml-2 border-l border-[#3a3b42] pl-4 text-right">
+                <div className="text-xs font-semibold">
+                  {user.name}
+                </div>
+                <div className="text-[11px] text-[#a1a1a8]">
+                  {user.role}
+                  {" · "}
+                  <a
+                    href="/api/auth/logout"
+                    className="underline hover:text-white"
+                  >
+                    Déconnexion
+                  </a>
+                </div>
               </div>
 
             </div>
@@ -2857,6 +3086,94 @@ function App() {
               </div>
             )
           )}
+        </div>
+      )}
+
+      {managingAccess && canModify && (
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase text-[#8580d9]">
+                  Administration
+                </div>
+                <h2 className="text-xl font-semibold">
+                  Accès au calendrier
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManagingAccess(false)}
+                className="rounded px-2 py-1 text-xl text-[#a1a1a8] hover:bg-[#303137] hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-5 grid grid-cols-1 gap-2 rounded-lg border border-[#303137] bg-[#151619] p-3 md:grid-cols-[1fr_1.4fr_160px_auto]">
+              <input
+                value={accessForm.name}
+                onChange={(event) => setAccessForm((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Nom complet"
+                className="rounded border border-[#3a3b42] bg-[#202126] px-3 py-2 text-sm"
+              />
+              <input
+                type="email"
+                value={accessForm.email}
+                onChange={(event) => setAccessForm((current) => ({ ...current, email: event.target.value }))}
+                placeholder="courriel@sportsmontreal.com"
+                className="rounded border border-[#3a3b42] bg-[#202126] px-3 py-2 text-sm"
+              />
+              <select
+                value={accessForm.role}
+                onChange={(event) => setAccessForm((current) => ({ ...current, role: event.target.value }))}
+                className="rounded border border-[#3a3b42] bg-[#202126] px-3 py-2 text-sm"
+              >
+                <option>Consultation</option>
+                <option>Modification</option>
+              </select>
+              <button
+                type="button"
+                onClick={addAccessUser}
+                disabled={accessSaving}
+                className="rounded bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] disabled:opacity-50"
+              >
+                Ajouter
+              </button>
+            </div>
+
+            {accessError && (
+              <div className="mb-4 rounded border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
+                {accessError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {accessUsers.map((accessUser) => (
+                <div key={accessUser.id} className="grid grid-cols-[1fr_1.4fr_160px_110px] items-center gap-2 rounded-lg border border-[#303137] p-3 text-sm">
+                  <div className="font-semibold">{accessUser.name}</div>
+                  <div className="truncate text-[#a1a1a8]">{accessUser.email}</div>
+                  <select
+                    value={accessUser.role}
+                    disabled={accessSaving}
+                    onChange={(event) => updateAccessUser(accessUser, { role: event.target.value })}
+                    className="rounded border border-[#3a3b42] bg-[#151619] px-2 py-1.5"
+                  >
+                    <option>Consultation</option>
+                    <option>Modification</option>
+                  </select>
+                  <button
+                    type="button"
+                    disabled={accessSaving}
+                    onClick={() => updateAccessUser(accessUser, { active: accessUser.active === "Oui" ? "Non" : "Oui" })}
+                    className={"rounded px-3 py-1.5 font-semibold " + (accessUser.active === "Oui" ? "bg-[#29402c] text-[#9bd2a0]" : "bg-[#40272b] text-[#ff9aa6]")}
+                  >
+                    {accessUser.active === "Oui" ? "Actif" : "Inactif"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
