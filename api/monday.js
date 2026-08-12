@@ -1,863 +1,931 @@
 export default async function handler(req, res) {
-try {
-const BOARD\_ID = "18425508055";
+  try {
+    const BOARD_ID = "18425508055";
 
-```
-const COLUMN_IDS = {
-  activite: "text_mm5z84v8",
-  jour: "dropdown_mm634c9n",
-  debut: "date_mm63hcxz",
-  fin: "date_mm63gzbs",
-  volet: "dropdown_mm63ffn6",
-  zone: "color_mm63vn4d",
-  mode: "dropdown_mm63xxam",
-  status: "status",
-  affichage: "text_mm5zme5q",
-  categorieCouleur: "color_mm63ahs6",
-  notes: "text_mm5z2k1c",
-};
+    const COLUMN_IDS = {
+      activite: "text_mm5z84v8",
+      jour: "dropdown_mm634c9n",
+      debut: "date_mm63hcxz",
+      fin: "date_mm63gzbs",
+      volet: "dropdown_mm63ffn6",
+      zone: "color_mm63vn4d",
+      mode: "dropdown_mm63xxam",
+      status: "status",
+      affichage: "text_mm5zme5q",
+      categorieCouleur: "color_mm63ahs6",
+      notes: "text_mm5z2k1c",
+    };
 
-const ZONE_INDEX = {
-  "Terrain synthétique": 1,
-  "Asphalte": 2,
-  "Zone démo": 3,
-  "Zone Famille": 4,
-  "Kiosques": 5,
-  "Scène": 6,
-  "Tente VIP": 7,
-};
+    const ZONE_INDEX = {
+      "Terrain synthétique": 1,
+      "Asphalte": 2,
+      "Zone démo": 3,
+      "Zone Famille": 4,
+      "Kiosques": 5,
+      "Scène": 6,
+      "Tente VIP": 7,
+    };
 
-/*
- * ============================================================
- * OUTIL MONDAY
- * ============================================================
- */
+    /*
+     * ============================================================
+     * REQUÊTE MONDAY
+     * ============================================================
+     */
 
-async function mondayRequest(query) {
-  const response = await fetch(
-    "https://api.monday.com/v2",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization:
-          process.env.MONDAY_API_TOKEN,
-      },
-      body: JSON.stringify({
-        query,
-      }),
+    async function mondayRequest(query) {
+      const response = await fetch(
+        "https://api.monday.com/v2",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:
+              process.env.MONDAY_API_TOKEN,
+          },
+          body: JSON.stringify({
+            query,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "Réponse Monday:",
+        JSON.stringify(data, null, 2)
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Erreur HTTP Monday: ${response.status}`
+        );
+      }
+
+      if (data.errors) {
+        throw new Error(
+          data.errors
+            .map((error) => error.message)
+            .join(" | ")
+        );
+      }
+
+      return data;
     }
-  );
 
-  const data = await response.json();
+    /*
+     * ============================================================
+     * CONVERSION APP → MONDAY
+     * ============================================================
+     *
+     * Dans l'application :
+     * 09:00
+     *
+     * Dans Monday :
+     * 10:00
+     *
+     * On conserve donc ton système actuel de +1 heure.
+     */
 
-  console.log(
-    "Réponse Monday:",
-    JSON.stringify(data, null, 2)
-  );
+    function addOneHourToDateTime(date, time) {
+      const [hours, minutes] = time
+        .split(":")
+        .map(Number);
 
-  if (!response.ok) {
-    throw new Error(
-      `Erreur HTTP Monday: ${response.status}`
-    );
-  }
+      let totalMinutes =
+        hours * 60 + minutes + 60;
 
-  if (data.errors) {
-    throw new Error(
-      data.errors
-        .map((error) => error.message)
-        .join(" | ")
-    );
-  }
+      let newDate = date;
 
-  return data;
-}
+      if (totalMinutes >= 1440) {
+        totalMinutes -= 1440;
 
-/*
- * ============================================================
- * CONVERSION DES HEURES
- * ============================================================
- *
- * Notre application :
- * 09:00
- *
- * Monday :
- * 10:00
- *
- * On garde donc ton système actuel de +1 h.
- */
+        const dateObject = new Date(
+          `${date}T00:00:00`
+        );
 
-function addOneHourToDateTime(date, time) {
-  const [hours, minutes] = time
-    .split(":")
-    .map(Number);
+        dateObject.setDate(
+          dateObject.getDate() + 1
+        );
 
-  const result = new Date(
-    `${date}T${String(hours).padStart(
-      2,
-      "0"
-    )}:${String(minutes).padStart(
-      2,
-      "0"
-    )}:00`
-  );
+        newDate =
+          dateObject
+            .toISOString()
+            .slice(0, 10);
+      }
 
-  result.setHours(
-    result.getHours() + 1
-  );
+      const newHours = Math.floor(
+        totalMinutes / 60
+      );
 
-  const year =
-    result.getFullYear();
+      const newMinutes =
+        totalMinutes % 60;
 
-  const month = String(
-    result.getMonth() + 1
-  ).padStart(2, "0");
+      return {
+        date: newDate,
+        time:
+          `${String(newHours).padStart(2, "0")}:` +
+          `${String(newMinutes).padStart(2, "0")}:00`,
+      };
+    }
 
-  const day = String(
-    result.getDate()
-  ).padStart(2, "0");
+    /*
+     * ============================================================
+     * CONVERSION MONDAY → APP
+     * ============================================================
+     *
+     * IMPORTANT :
+     * On lit "value" de la colonne Date plutôt que "text".
+     *
+     * Cela évite les problèmes de formatage de Monday.
+     */
 
-  const newHours = String(
-    result.getHours()
-  ).padStart(2, "0");
+    function parseMondayDateValue(column) {
+      if (!column) {
+        return null;
+      }
 
-  const newMinutes = String(
-    result.getMinutes()
-  ).padStart(2, "0");
+      if (!column.value) {
+        return null;
+      }
 
-  return {
-    date: `${year}-${month}-${day}`,
-    time: `${newHours}:${newMinutes}:00`,
-  };
-}
+      try {
+        const parsed =
+          JSON.parse(column.value);
 
-/*
- * ============================================================
- * RÉCUPÉRER UN ITEM PRÉCIS DEPUIS MONDAY
- * ============================================================
- *
- * Sert à vérifier que Monday a réellement enregistré
- * les changements.
- */
+        if (!parsed.date) {
+          return null;
+        }
 
-async function getMondayItem(itemId) {
-  const query = `
-    query {
-      boards(ids: [${BOARD_ID}]) {
-        items_page(
-          query_params: {
-            rules: [
-              {
-                column_id: "name"
-                compare_value: ["${itemId}"]
-                operator: any_of
+        return {
+          date: parsed.date,
+          time:
+            parsed.time ||
+            "00:00:00",
+        };
+      } catch (error) {
+        console.error(
+          "Impossible de parser la valeur Monday:",
+          column.value
+        );
+
+        return null;
+      }
+    }
+
+    /*
+     * Retire 1 heure à une valeur Monday
+     * pour revenir à l'heure de l'application.
+     */
+
+    function subtractOneHourFromMonday(
+      date,
+      time
+    ) {
+      const [hours, minutes] = time
+        .substring(0, 5)
+        .split(":")
+        .map(Number);
+
+      let totalMinutes =
+        hours * 60 + minutes - 60;
+
+      let newDate = date;
+
+      if (totalMinutes < 0) {
+        totalMinutes += 1440;
+
+        const dateObject = new Date(
+          `${date}T00:00:00`
+        );
+
+        dateObject.setDate(
+          dateObject.getDate() - 1
+        );
+
+        newDate =
+          dateObject
+            .toISOString()
+            .slice(0, 10);
+      }
+
+      const newHours = Math.floor(
+        totalMinutes / 60
+      );
+
+      const newMinutes =
+        totalMinutes % 60;
+
+      return {
+        date: newDate,
+        time:
+          `${String(newHours).padStart(2, "0")}:` +
+          `${String(newMinutes).padStart(2, "0")}`,
+      };
+    }
+
+    /*
+     * ============================================================
+     * RÉCUPÉRER TOUS LES ITEMS
+     * ============================================================
+     */
+
+    async function getAllMondayItems() {
+      const query = `
+        query {
+          boards(ids: [${BOARD_ID}]) {
+            id
+            name
+
+            items_page(limit: 500) {
+              items {
+                id
+                name
+
+                column_values {
+                  id
+                  text
+                  value
+                }
               }
-            ]
-          }
-          limit: 500
-        ) {
-          items {
-            id
-            name
-            column_values {
-              id
-              text
-              value
             }
           }
         }
-      }
+      `;
+
+      const data =
+        await mondayRequest(query);
+
+      return (
+        data.data?.boards?.[0]
+          ?.items_page?.items || []
+      );
     }
-  `;
 
-  /*
-   * On ne dépend pas du filtre ci-dessus pour trouver
-   * l'item : on récupère directement les items du board
-   * et on cherche son ID côté serveur.
-   */
+    /*
+     * ============================================================
+     * RÉCUPÉRER UN ITEM
+     * ============================================================
+     */
 
-  const fallbackQuery = `
-    query {
-      boards(ids: [${BOARD_ID}]) {
-        items_page(limit: 500) {
-          items {
+    async function getMondayItem(itemId) {
+      const items =
+        await getAllMondayItems();
+
+      const item = items.find(
+        (currentItem) =>
+          String(currentItem.id) ===
+          String(itemId)
+      );
+
+      if (!item) {
+        throw new Error(
+          `Impossible de retrouver l'activité ${itemId} dans Monday.`
+        );
+      }
+
+      return item;
+    }
+
+    /*
+     * ============================================================
+     * GET
+     * ============================================================
+     */
+
+    if (req.method === "GET") {
+      const items =
+        await getAllMondayItems();
+
+      return res.status(200).json({
+        data: {
+          boards: [
+            {
+              id: BOARD_ID,
+              items_page: {
+                items,
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    /*
+     * ============================================================
+     * POST — CRÉER UNE ACTIVITÉ
+     * ============================================================
+     */
+
+    if (req.method === "POST") {
+      const {
+        activite,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        zone,
+      } = req.body || {};
+
+      if (!activite?.trim()) {
+        return res.status(400).json({
+          error:
+            "Le nom de l'activité est manquant.",
+        });
+      }
+
+      if (!startDate) {
+        return res.status(400).json({
+          error: "startDate manquant.",
+        });
+      }
+
+      if (!startTime) {
+        return res.status(400).json({
+          error: "startTime manquant.",
+        });
+      }
+
+      if (!endDate) {
+        return res.status(400).json({
+          error: "endDate manquant.",
+        });
+      }
+
+      if (!endTime) {
+        return res.status(400).json({
+          error: "endTime manquant.",
+        });
+      }
+
+      if (!zone) {
+        return res.status(400).json({
+          error: "zone manquante.",
+        });
+      }
+
+      const zoneIndex =
+        ZONE_INDEX[zone];
+
+      if (!zoneIndex) {
+        return res.status(400).json({
+          error:
+            `Zone inconnue : ${zone}`,
+        });
+      }
+
+      const mondayStart =
+        addOneHourToDateTime(
+          startDate,
+          startTime
+        );
+
+      const mondayEnd =
+        addOneHourToDateTime(
+          endDate,
+          endTime
+        );
+
+      /*
+       * Créer l'item.
+       */
+
+      const createMutation = `
+        mutation {
+          create_item(
+            board_id: ${Number(
+              BOARD_ID
+            )}
+            item_name: ${JSON.stringify(
+              activite.trim()
+            )}
+          ) {
             id
             name
-            column_values {
-              id
-              text
-              value
-            }
           }
         }
+      `;
+
+      const createData =
+        await mondayRequest(
+          createMutation
+        );
+
+      const newItem =
+        createData.data?.create_item;
+
+      if (!newItem?.id) {
+        throw new Error(
+          "Monday n'a pas retourné l'ID du nouvel item."
+        );
       }
-    }
-  `;
 
-  const data =
-    await mondayRequest(
-      fallbackQuery
-    );
+      /*
+       * Ajouter les informations.
+       */
 
-  const items =
-    data.data?.boards?.[0]
-      ?.items_page?.items || [];
+      const columnValues = {
+        [COLUMN_IDS.activite]:
+          activite.trim(),
 
-  const item = items.find(
-    (item) =>
-      String(item.id) ===
-      String(itemId)
-  );
+        [COLUMN_IDS.debut]: {
+          date: mondayStart.date,
+          time: mondayStart.time,
+        },
 
-  if (!item) {
-    throw new Error(
-      `Impossible de retrouver l'item ${itemId} dans Monday après la modification.`
-    );
-  }
+        [COLUMN_IDS.fin]: {
+          date: mondayEnd.date,
+          time: mondayEnd.time,
+        },
 
-  return item;
-}
+        [COLUMN_IDS.zone]: {
+          index: zoneIndex,
+        },
+      };
 
-/*
- * ============================================================
- * GET
- * ============================================================
- */
-
-if (req.method === "GET") {
-  const query = `
-    query {
-      boards(ids: [${BOARD_ID}]) {
-        id
-        name
-
-        items_page(limit: 500) {
-          items {
+      const updateMutation = `
+        mutation {
+          change_multiple_column_values(
+            item_id: ${Number(
+              newItem.id
+            )}
+            board_id: ${Number(
+              BOARD_ID
+            )}
+            column_values: ${JSON.stringify(
+              JSON.stringify(
+                columnValues
+              )
+            )}
+          ) {
             id
             name
-
-            column_values {
-              id
-              text
-              value
-            }
           }
         }
-      }
-    }
-  `;
+      `;
 
-  const data =
-    await mondayRequest(query);
+      const updateData =
+        await mondayRequest(
+          updateMutation
+        );
 
-  return res.status(200).json(data);
-}
-
-/*
- * ============================================================
- * POST — CRÉER UNE ACTIVITÉ
- * ============================================================
- */
-
-if (req.method === "POST") {
-  const {
-    activite,
-    startDate,
-    startTime,
-    endDate,
-    endTime,
-    zone,
-  } = req.body || {};
-
-  if (!activite?.trim()) {
-    return res.status(400).json({
-      error:
-        "Le nom de l'activité est manquant.",
-    });
-  }
-
-  if (!startDate) {
-    return res.status(400).json({
-      error: "startDate manquant.",
-    });
-  }
-
-  if (!startTime) {
-    return res.status(400).json({
-      error: "startTime manquant.",
-    });
-  }
-
-  if (!endDate) {
-    return res.status(400).json({
-      error: "endDate manquant.",
-    });
-  }
-
-  if (!endTime) {
-    return res.status(400).json({
-      error: "endTime manquant.",
-    });
-  }
-
-  if (!zone) {
-    return res.status(400).json({
-      error: "zone manquante.",
-    });
-  }
-
-  const zoneIndex =
-    ZONE_INDEX[zone];
-
-  if (!zoneIndex) {
-    return res.status(400).json({
-      error:
-        `Zone inconnue : ${zone}`,
-    });
-  }
-
-  const mondayStart =
-    addOneHourToDateTime(
-      startDate,
-      startTime
-    );
-
-  const mondayEnd =
-    addOneHourToDateTime(
-      endDate,
-      endTime
-    );
-
-  /*
-   * CRÉATION DE L'ITEM
-   */
-
-  const createMutation = `
-    mutation {
-      create_item(
-        board_id: ${Number(
-          BOARD_ID
-        )}
-        item_name: ${JSON.stringify(
-          activite.trim()
-        )}
+      if (
+        !updateData.data
+          ?.change_multiple_column_values
+          ?.id
       ) {
-        id
-        name
+        throw new Error(
+          "Monday n'a pas confirmé l'ajout des informations de l'activité."
+        );
       }
-    }
-  `;
 
-  const createData =
-    await mondayRequest(
-      createMutation
-    );
+      /*
+       * Relire l'item.
+       */
 
-  const newItem =
-    createData.data?.create_item;
-
-  if (!newItem?.id) {
-    throw new Error(
-      "Monday n'a pas retourné l'ID du nouvel item."
-    );
-  }
-
-  /*
-   * VALEURS À ENREGISTRER
-   */
-
-  const columnValues = {
-    [COLUMN_IDS.activite]:
-      activite.trim(),
-
-    [COLUMN_IDS.debut]: {
-      date: mondayStart.date,
-      time: mondayStart.time,
-    },
-
-    [COLUMN_IDS.fin]: {
-      date: mondayEnd.date,
-      time: mondayEnd.time,
-    },
-
-    [COLUMN_IDS.zone]: {
-      index: zoneIndex,
-    },
-  };
-
-  /*
-   * MISE À JOUR DES COLONNES
-   */
-
-  const updateMutation = `
-    mutation {
-      change_multiple_column_values(
-        item_id: ${Number(
+      const savedItem =
+        await getMondayItem(
           newItem.id
-        )}
-        board_id: ${Number(
-          BOARD_ID
-        )}
-        column_values: ${JSON.stringify(
-          JSON.stringify(
-            columnValues
-          )
-        )}
-      ) {
-        id
-        name
-      }
+        );
+
+      return res.status(200).json({
+        success: true,
+        verified: true,
+        itemId: newItem.id,
+        activite:
+          activite.trim(),
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        zone,
+        mondayStart,
+        mondayEnd,
+        mondayItem:
+          savedItem,
+      });
     }
-  `;
 
-  await mondayRequest(
-    updateMutation
-  );
+    /*
+     * ============================================================
+     * PUT — MODIFIER UNE ACTIVITÉ
+     * ============================================================
+     */
 
-  /*
-   * VÉRIFICATION DIRECTE DANS MONDAY
-   */
-
-  const savedItem =
-    await getMondayItem(
-      newItem.id
-    );
-
-  const savedStart =
-    savedItem.column_values?.find(
-      (column) =>
-        column.id ===
-        COLUMN_IDS.debut
-    );
-
-  const savedEnd =
-    savedItem.column_values?.find(
-      (column) =>
-        column.id ===
-        COLUMN_IDS.fin
-    );
-
-  const savedZone =
-    savedItem.column_values?.find(
-      (column) =>
-        column.id ===
-        COLUMN_IDS.zone
-    );
-
-  console.log(
-    "NOUVEL ITEM VÉRIFIÉ DANS MONDAY:",
-    JSON.stringify(
-      {
-        id: savedItem.id,
-        debut: savedStart,
-        fin: savedEnd,
-        zone: savedZone,
-      },
-      null,
-      2
-    )
-  );
-
-  return res.status(200).json({
-    success: true,
-    verified: true,
-
-    itemId: newItem.id,
-
-    activite:
-      activite.trim(),
-
-    startDate,
-    startTime,
-
-    endDate,
-    endTime,
-
-    zone,
-
-    mondayStart,
-    mondayEnd,
-
-    mondayItem:
-      savedItem,
-  });
-}
-
-/*
- * ============================================================
- * PUT — MODIFIER UNE ACTIVITÉ
- * ============================================================
- */
-
-if (req.method === "PUT") {
-  const {
-    itemId,
-    activite,
-    startDate,
-    startTime,
-    endDate,
-    endTime,
-    zone,
-  } = req.body || {};
-
-  if (!itemId) {
-    return res.status(400).json({
-      error:
-        "itemId manquant.",
-    });
-  }
-
-  if (!startDate) {
-    return res.status(400).json({
-      error:
-        "startDate manquant.",
-    });
-  }
-
-  if (!startTime) {
-    return res.status(400).json({
-      error:
-        "startTime manquant.",
-    });
-  }
-
-  if (!endDate) {
-    return res.status(400).json({
-      error:
-        "endDate manquant.",
-    });
-  }
-
-  if (!endTime) {
-    return res.status(400).json({
-      error:
-        "endTime manquant.",
-    });
-  }
-
-  if (!zone) {
-    return res.status(400).json({
-      error:
-        "zone manquante.",
-    });
-  }
-
-  const zoneIndex =
-    ZONE_INDEX[zone];
-
-  if (!zoneIndex) {
-    return res.status(400).json({
-      error:
-        `Zone inconnue : ${zone}`,
-    });
-  }
-
-  /*
-   * Conversion App → Monday
-   */
-
-  const mondayStart =
-    addOneHourToDateTime(
-      startDate,
-      startTime
-    );
-
-  const mondayEnd =
-    addOneHourToDateTime(
-      endDate,
-      endTime
-    );
-
-  /*
-   * VALEURS À ENVOYER À MONDAY
-   */
-
-  const columnValues = {
-    [COLUMN_IDS.debut]: {
-      date: mondayStart.date,
-      time: mondayStart.time,
-    },
-
-    [COLUMN_IDS.fin]: {
-      date: mondayEnd.date,
-      time: mondayEnd.time,
-    },
-
-    [COLUMN_IDS.zone]: {
-      index: zoneIndex,
-    },
-  };
-
-  /*
-   * Si le popup fournit un nom,
-   * on le modifie également.
-   */
-
-  if (
-    typeof activite ===
-      "string" &&
-    activite.trim()
-  ) {
-    columnValues[
-      COLUMN_IDS.activite
-    ] = activite.trim();
-  }
-
-  console.log(
-    "ENVOI À MONDAY:",
-    JSON.stringify(
-      {
+    if (req.method === "PUT") {
+      const {
         itemId,
-        columnValues,
-      },
-      null,
-      2
-    )
-  );
+        activite,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        zone,
+      } = req.body || {};
 
-  /*
-   * MUTATION
-   */
+      if (!itemId) {
+        return res.status(400).json({
+          error:
+            "itemId manquant.",
+        });
+      }
 
-  const mutation = `
-    mutation {
-      change_multiple_column_values(
-        item_id: ${Number(
+      if (!startDate) {
+        return res.status(400).json({
+          error:
+            "startDate manquant.",
+        });
+      }
+
+      if (!startTime) {
+        return res.status(400).json({
+          error:
+            "startTime manquant.",
+        });
+      }
+
+      if (!endDate) {
+        return res.status(400).json({
+          error:
+            "endDate manquant.",
+        });
+      }
+
+      if (!endTime) {
+        return res.status(400).json({
+          error:
+            "endTime manquant.",
+        });
+      }
+
+      if (!zone) {
+        return res.status(400).json({
+          error:
+            "zone manquante.",
+        });
+      }
+
+      const zoneIndex =
+        ZONE_INDEX[zone];
+
+      if (!zoneIndex) {
+        return res.status(400).json({
+          error:
+            `Zone inconnue : ${zone}`,
+        });
+      }
+
+      /*
+       * Vérifier que l'item existe réellement.
+       */
+
+      const existingItem =
+        await getMondayItem(
           itemId
-        )}
-        board_id: ${Number(
-          BOARD_ID
-        )}
-        column_values: ${JSON.stringify(
-          JSON.stringify(
-            columnValues
-          )
-        )}
+        );
+
+      if (!existingItem) {
+        return res.status(404).json({
+          error:
+            "Activité introuvable dans Monday.",
+        });
+      }
+
+      /*
+       * Conversion App → Monday
+       */
+
+      const mondayStart =
+        addOneHourToDateTime(
+          startDate,
+          startTime
+        );
+
+      const mondayEnd =
+        addOneHourToDateTime(
+          endDate,
+          endTime
+        );
+
+      /*
+       * Valeurs à envoyer.
+       */
+
+      const columnValues = {
+        [COLUMN_IDS.debut]: {
+          date: mondayStart.date,
+          time: mondayStart.time,
+        },
+
+        [COLUMN_IDS.fin]: {
+          date: mondayEnd.date,
+          time: mondayEnd.time,
+        },
+
+        [COLUMN_IDS.zone]: {
+          index: zoneIndex,
+        },
+      };
+
+      /*
+       * Si un nom est fourni,
+       * on le modifie également.
+       */
+
+      if (
+        typeof activite ===
+          "string" &&
+        activite.trim()
       ) {
-        id
-        name
+        columnValues[
+          COLUMN_IDS.activite
+        ] = activite.trim();
       }
-    }
-  `;
 
-  const mutationData =
-    await mondayRequest(
-      mutation
-    );
+      console.log(
+        "MODIFICATION MONDAY",
+        JSON.stringify(
+          {
+            itemId,
+            columnValues,
+          },
+          null,
+          2
+        )
+      );
 
-  const mutationItem =
-    mutationData.data
-      ?.change_multiple_column_values;
+      /*
+       * Mutation Monday.
+       */
 
-  if (!mutationItem?.id) {
-    throw new Error(
-      "Monday n'a pas confirmé la modification."
-    );
-  }
+      const mutation = `
+        mutation {
+          change_multiple_column_values(
+            item_id: ${Number(
+              itemId
+            )}
+            board_id: ${Number(
+              BOARD_ID
+            )}
+            column_values: ${JSON.stringify(
+              JSON.stringify(
+                columnValues
+              )
+            )}
+          ) {
+            id
+            name
+          }
+        }
+      `;
 
-  /*
-   * ========================================================
-   * TRÈS IMPORTANT :
-   * ON RELIT MONDAY APRÈS LA MUTATION
-   * ========================================================
-   */
+      const mutationData =
+        await mondayRequest(
+          mutation
+        );
 
-  const savedItem =
-    await getMondayItem(
-      itemId
-    );
+      const mutationItem =
+        mutationData.data
+          ?.change_multiple_column_values;
 
-  const savedStart =
-    savedItem.column_values?.find(
-      (column) =>
-        column.id ===
-        COLUMN_IDS.debut
-    );
+      if (!mutationItem?.id) {
+        throw new Error(
+          "Monday n'a pas confirmé la modification."
+        );
+      }
 
-  const savedEnd =
-    savedItem.column_values?.find(
-      (column) =>
-        column.id ===
-        COLUMN_IDS.fin
-    );
+      /*
+       * ========================================================
+       * RELIRE MONDAY
+       * ========================================================
+       */
 
-  const savedZone =
-    savedItem.column_values?.find(
-      (column) =>
-        column.id ===
-        COLUMN_IDS.zone
-    );
+      const savedItem =
+        await getMondayItem(
+          itemId
+        );
 
-  console.log(
-    "VALEURS RÉELLEMENT PRÉSENTES DANS MONDAY:",
-    JSON.stringify(
-      {
+      /*
+       * Récupérer les colonnes Date.
+       */
+
+      const savedStartColumn =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.debut
+        );
+
+      const savedEndColumn =
+        savedItem.column_values?.find(
+          (column) =>
+            column.id ===
+            COLUMN_IDS.fin
+        );
+
+      /*
+       * Lire leurs valeurs JSON.
+       */
+
+      const savedStart =
+        parseMondayDateValue(
+          savedStartColumn
+        );
+
+      const savedEnd =
+        parseMondayDateValue(
+          savedEndColumn
+        );
+
+      if (!savedStart) {
+        throw new Error(
+          "Monday a répondu, mais la date de début n'a pas pu être relue."
+        );
+      }
+
+      if (!savedEnd) {
+        throw new Error(
+          "Monday a répondu, mais la date de fin n'a pas pu être relue."
+        );
+      }
+
+      /*
+       * Comparaison directe des valeurs
+       * envoyées à Monday.
+       *
+       * On compare les valeurs Monday brutes,
+       * donc on ne dépend plus du texte affiché.
+       */
+
+      const actualStartDate =
+        savedStart.date;
+
+      const actualStartTime =
+        savedStart.time.substring(
+          0,
+          5
+        );
+
+      const actualEndDate =
+        savedEnd.date;
+
+      const actualEndTime =
+        savedEnd.time.substring(
+          0,
+          5
+        );
+
+      const expectedStartDate =
+        mondayStart.date;
+
+      const expectedStartTime =
+        mondayStart.time.substring(
+          0,
+          5
+        );
+
+      const expectedEndDate =
+        mondayEnd.date;
+
+      const expectedEndTime =
+        mondayEnd.time.substring(
+          0,
+          5
+        );
+
+      const startMatches =
+        actualStartDate ===
+          expectedStartDate &&
+        actualStartTime ===
+          expectedStartTime;
+
+      const endMatches =
+        actualEndDate ===
+          expectedEndDate &&
+        actualEndTime ===
+          expectedEndTime;
+
+      console.log(
+        "VÉRIFICATION FINALE MONDAY:",
+        JSON.stringify(
+          {
+            itemId,
+
+            expected: {
+              startDate:
+                expectedStartDate,
+              startTime:
+                expectedStartTime,
+              endDate:
+                expectedEndDate,
+              endTime:
+                expectedEndTime,
+            },
+
+            actual: {
+              startDate:
+                actualStartDate,
+              startTime:
+                actualStartTime,
+              endDate:
+                actualEndDate,
+              endTime:
+                actualEndTime,
+            },
+          },
+          null,
+          2
+        )
+      );
+
+      /*
+       * SI LES VALEURS NE CORRESPONDENT PAS,
+       * ON RETOURNE UNE VRAIE ERREUR.
+       */
+
+      if (
+        !startMatches ||
+        !endMatches
+      ) {
+        return res.status(500).json({
+          error:
+            "Monday n'a pas enregistré exactement les heures demandées.",
+
+          expected: {
+            startDate:
+              expectedStartDate,
+            startTime:
+              expectedStartTime,
+            endDate:
+              expectedEndDate,
+            endTime:
+              expectedEndTime,
+          },
+
+          actual: {
+            startDate:
+              actualStartDate,
+            startTime:
+              actualStartTime,
+            endDate:
+              actualEndDate,
+            endTime:
+              actualEndTime,
+          },
+
+          mondayItem:
+            savedItem,
+        });
+      }
+
+      /*
+       * ========================================================
+       * SUCCÈS
+       * ========================================================
+       */
+
+      return res.status(200).json({
+        success: true,
+        verified: true,
+
         itemId,
-        debut: savedStart,
-        fin: savedEnd,
-        zone: savedZone,
-      },
-      null,
-      2
-    )
-  );
 
-  /*
-   * On vérifie que Monday contient bien
-   * les valeurs qu'on vient de lui envoyer.
-   */
+        startDate,
+        startTime,
 
-  const expectedStartDate =
-    mondayStart.date;
+        endDate,
+        endTime,
 
-  const expectedStartTime =
-    mondayStart.time.substring(
-      0,
-      5
-    );
+        zone,
 
-  const expectedEndDate =
-    mondayEnd.date;
+        mondayStart,
+        mondayEnd,
 
-  const expectedEndTime =
-    mondayEnd.time.substring(
-      0,
-      5
-    );
+        mondayItem:
+          savedItem,
+      });
+    }
 
-  const mondayStartText =
-    savedStart?.text || "";
+    /*
+     * ============================================================
+     * MÉTHODE NON SUPPORTÉE
+     * ============================================================
+     */
 
-  const mondayEndText =
-    savedEnd?.text || "";
-
-  const startMatches =
-    mondayStartText.includes(
-      expectedStartDate
-    ) &&
-    mondayStartText.includes(
-      expectedStartTime
-    );
-
-  const endMatches =
-    mondayEndText.includes(
-      expectedEndDate
-    ) &&
-    mondayEndText.includes(
-      expectedEndTime
-    );
-
-  /*
-   * Si Monday ne contient pas les bonnes valeurs,
-   * ON NE DIT PAS QUE C'EST SAUVEGARDÉ.
-   */
-
-  if (
-    !startMatches ||
-    !endMatches
-  ) {
+    return res.status(405).json({
+      error:
+        "Méthode non supportée.",
+    });
+  } catch (error) {
     console.error(
-      "VÉRIFICATION MONDAY ÉCHOUÉE",
-      {
-        expected: {
-          startDate:
-            expectedStartDate,
-          startTime:
-            expectedStartTime,
-          endDate:
-            expectedEndDate,
-          endTime:
-            expectedEndTime,
-        },
-
-        actual: {
-          start:
-            mondayStartText,
-          end:
-            mondayEndText,
-        },
-      }
+      "ERREUR API MONDAY:",
+      error
     );
 
     return res.status(500).json({
       error:
-        "Monday n'a pas enregistré les heures demandées.",
-
-      expected: {
-        startDate:
-          expectedStartDate,
-        startTime:
-          expectedStartTime,
-        endDate:
-          expectedEndDate,
-        endTime:
-          expectedEndTime,
-      },
-
-      actual: {
-        start:
-          mondayStartText,
-        end:
-          mondayEndText,
-      },
-
-      mondayItem:
-        savedItem,
+        "Erreur serveur",
+      details:
+        error.message,
     });
   }
-
-  /*
-   * TOUT EST OK
-   */
-
-  return res.status(200).json({
-    success: true,
-    verified: true,
-
-    itemId,
-
-    startDate,
-    startTime,
-
-    endDate,
-    endTime,
-
-    zone,
-
-    mondayStart,
-    mondayEnd,
-
-    mondayItem:
-      savedItem,
-  });
-}
-
-/*
- * ============================================================
- * MÉTHODE NON SUPPORTÉE
- * ============================================================
- */
-
-return res.status(405).json({
-  error:
-    "Méthode non supportée.",
-});
-```
-
-} catch (error) {
-console.error(
-"ERREUR API MONDAY:",
-error
-);
-
-```
-return res.status(500).json({
-  error:
-    "Erreur serveur",
-  details:
-    error.message,
-});
-```
-
-}
 }
