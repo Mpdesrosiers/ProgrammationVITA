@@ -235,118 +235,148 @@ function App() {
   const [saveMessage, setSaveMessage] =
     useState("");
 
-  useEffect(() => {
-    async function loadActivities() {
-      try {
-        setLoading(true);
+  /*
+   * ----------------------------------------------------
+   * POPUP
+   * ----------------------------------------------------
+   */
 
-        const response = await fetch(
-          "/api/monday"
+  const [editingItem, setEditingItem] =
+    useState(null);
+
+  const [editForm, setEditForm] =
+    useState({
+      activite: "",
+      date: "",
+      debut: "",
+      fin: "",
+      zone: "",
+    });
+
+  const [editSaving, setEditSaving] =
+    useState(false);
+
+  const [editError, setEditError] =
+    useState("");
+
+  /*
+   * ----------------------------------------------------
+   * CHARGEMENT MONDAY
+   * ----------------------------------------------------
+   */
+
+  async function loadActivities() {
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        "/api/monday"
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(
+          data.details?.[0]?.message ||
+            data.error ||
+            "Impossible de charger les données."
         );
-
-        const data = await response.json();
-
-        if (!response.ok || data.error) {
-          throw new Error(
-            data.details?.[0]?.message ||
-              data.error ||
-              "Impossible de charger les données."
-          );
-        }
-
-        const items =
-          data.data?.boards?.[0]?.items_page
-            ?.items || [];
-
-        const formattedActivities =
-          items
-            .map((item) => ({
-              id: item.id,
-
-              mondayId: item.name,
-
-              activite: getColumn(
-                item,
-                COLUMN_IDS.activite
-              ),
-
-              date: getDate(item),
-
-              debut: getTime(
-                item,
-                COLUMN_IDS.debut
-              ),
-
-              fin: getTime(
-                item,
-                COLUMN_IDS.fin
-              ),
-
-              volet: getColumn(
-                item,
-                COLUMN_IDS.volet
-              ),
-
-              zone: getColumn(
-                item,
-                COLUMN_IDS.zone
-              ),
-
-              mode: getColumn(
-                item,
-                COLUMN_IDS.mode
-              ),
-
-              status: getColumn(
-                item,
-                COLUMN_IDS.status
-              ),
-
-              affichage: getColumn(
-                item,
-                COLUMN_IDS.affichage
-              ),
-
-              categorieCouleur:
-                getColumn(
-                  item,
-                  COLUMN_IDS.categorieCouleur
-                ),
-
-              notes: getColumn(
-                item,
-                COLUMN_IDS.notes
-              ),
-            }))
-            .filter(
-              (activity) =>
-                activity.activite &&
-                activity.debut &&
-                activity.fin
-            );
-
-        setActivities(
-          formattedActivities
-        );
-
-        setError("");
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
       }
-    }
 
+      const items =
+        data.data?.boards?.[0]?.items_page
+          ?.items || [];
+
+      const formattedActivities =
+        items
+          .map((item) => ({
+            id: item.id,
+
+            mondayId: item.name,
+
+            activite: getColumn(
+              item,
+              COLUMN_IDS.activite
+            ),
+
+            date: getDate(item),
+
+            debut: getTime(
+              item,
+              COLUMN_IDS.debut
+            ),
+
+            fin: getTime(
+              item,
+              COLUMN_IDS.fin
+            ),
+
+            volet: getColumn(
+              item,
+              COLUMN_IDS.volet
+            ),
+
+            zone: getColumn(
+              item,
+              COLUMN_IDS.zone
+            ),
+
+            mode: getColumn(
+              item,
+              COLUMN_IDS.mode
+            ),
+
+            status: getColumn(
+              item,
+              COLUMN_IDS.status
+            ),
+
+            affichage: getColumn(
+              item,
+              COLUMN_IDS.affichage
+            ),
+
+            categorieCouleur:
+              getColumn(
+                item,
+                COLUMN_IDS.categorieCouleur
+              ),
+
+            notes: getColumn(
+              item,
+              COLUMN_IDS.notes
+            ),
+          }))
+          .filter(
+            (activity) =>
+              activity.activite &&
+              activity.debut &&
+              activity.fin
+          );
+
+      setActivities(
+        formattedActivities
+      );
+
+      setError("");
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
     loadActivities();
   }, []);
 
   /*
+   * ----------------------------------------------------
    * AUTO-SCROLL PENDANT LE DRAG
-   *
-   * Lorsque la souris approche du haut ou
-   * du bas de l'écran, la page défile.
+   * ----------------------------------------------------
    */
+
   useEffect(() => {
     if (!draggedGroup) return;
 
@@ -424,6 +454,12 @@ function App() {
     };
   }, [draggedGroup]);
 
+  /*
+   * ----------------------------------------------------
+   * ACTIVITÉS DU JOUR
+   * ----------------------------------------------------
+   */
+
   const selectedActivities =
     useMemo(() => {
       return activities.filter(
@@ -434,6 +470,12 @@ function App() {
       activities,
       selectedDay,
     ]);
+
+  /*
+   * ----------------------------------------------------
+   * GROUPES
+   * ----------------------------------------------------
+   */
 
   const activityGroups =
     useMemo(() => {
@@ -484,6 +526,12 @@ function App() {
     );
   }
 
+  /*
+   * ----------------------------------------------------
+   * DRAG & DROP
+   * ----------------------------------------------------
+   */
+
   function handleDragStart(group) {
     setDraggedGroup(group);
 
@@ -500,18 +548,6 @@ function App() {
     setDragPreview(null);
   }
 
-  /*
-   * IMPORTANT :
-   *
-   * On ne détermine plus la position du drop
-   * à partir de la cellule qui reçoit l'événement.
-   *
-   * On cherche directement l'élément qui se trouve
-   * SOUS la souris.
-   *
-   * Ça permet au système de continuer à fonctionner
-   * correctement après un scroll.
-   */
   function findCellUnderMouse(event) {
     const elements =
       document.elementsFromPoint(
@@ -536,12 +572,6 @@ function App() {
     };
   }
 
-  /*
-   * Calcule la demi-heure exacte dans la cellule
-   * selon la position verticale de la souris.
-   *
-   * Chaque cellule représente 30 minutes.
-   */
   function getPreciseDropTime(
     cell,
     clientY
@@ -552,14 +582,6 @@ function App() {
     const relativeY =
       clientY - rect.top;
 
-    /*
-     * Une cellule = 30 minutes.
-     * Si la souris est dans la moitié supérieure,
-     * on reste sur le début de la cellule.
-     *
-     * Si elle est dans la moitié inférieure,
-     * on passe à la prochaine demi-heure.
-     */
     const half =
       relativeY >= 28
         ? 30
@@ -575,10 +597,6 @@ function App() {
     );
   }
 
-  /*
-   * Pendant le déplacement, on retrouve
-   * continuellement la cellule sous la souris.
-   */
   function updateDragPreview(event) {
     if (!draggedGroup) return;
 
@@ -599,9 +617,7 @@ function App() {
     });
   }
 
-  async function handleDrop(
-    event
-  ) {
+  async function handleDrop(event) {
     event.preventDefault();
 
     if (!draggedGroup) return;
@@ -649,9 +665,6 @@ function App() {
         (activity) => activity.id
       );
 
-    /*
-     * Mise à jour immédiate de l'affichage.
-     */
     setActivities((current) =>
       current.map((activity) =>
         draggedIds.includes(
@@ -674,10 +687,6 @@ function App() {
     setSaveMessage("");
 
     try {
-      /*
-       * Toutes les activités du groupe
-       * sont sauvegardées simultanément.
-       */
       const saveRequests =
         draggedGroup.activities.map(
           async (activity) => {
@@ -742,105 +751,343 @@ function App() {
         "⚠️ Le changement est affiché, mais la sauvegarde dans Monday a échoué."
       );
 
+      await loadActivities();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /*
+   * ----------------------------------------------------
+   * OUVERTURE DU POPUP
+   * ----------------------------------------------------
+   */
+
+  function openActivityEditor(activity) {
+    setEditError("");
+
+    setEditingItem({
+      type: "activity",
+      activity,
+    });
+
+    setEditForm({
+      activite:
+        activity.activite || "",
+
+      date:
+        activity.date || selectedDay,
+
+      debut:
+        activity.debut || "05:30",
+
+      fin:
+        activity.fin || "06:00",
+
+      zone:
+        activity.zone ||
+        zones[0],
+    });
+  }
+
+  function openGroupEditor(group) {
+    setEditError("");
+
+    setEditingItem({
+      type: "group",
+      group,
+    });
+
+    setEditForm({
+      activite: "",
+
+      date:
+        group.date || selectedDay,
+
+      debut:
+        group.debut || "05:30",
+
+      fin:
+        group.fin || "06:00",
+
+      zone:
+        group.zone ||
+        zones[0],
+    });
+  }
+
+  function closeEditor() {
+    if (editSaving) return;
+
+    setEditingItem(null);
+    setEditError("");
+  }
+
+  /*
+   * ----------------------------------------------------
+   * SAUVEGARDE DU POPUP
+   * ----------------------------------------------------
+   */
+
+  async function handleSaveEditor() {
+    if (!editingItem) return;
+
+    setEditSaving(true);
+    setEditError("");
+
+    try {
+      const newDate =
+        editForm.date;
+
+      const newStart =
+        editForm.debut;
+
+      const newEnd =
+        editForm.fin;
+
+      const newZone =
+        editForm.zone;
+
+      if (!newDate) {
+        throw new Error(
+          "Veuillez choisir une journée."
+        );
+      }
+
+      if (!newStart || !newEnd) {
+        throw new Error(
+          "Veuillez choisir une heure de début et de fin."
+        );
+      }
+
+      if (
+        timeToMinutes(newEnd) <=
+        timeToMinutes(newStart)
+      ) {
+        throw new Error(
+          "L'heure de fin doit être après l'heure de début."
+        );
+      }
+
       /*
-       * Recharge les données de Monday
-       * si la sauvegarde échoue.
+       * ------------------------------------------------
+       * ACTIVITÉ INDIVIDUELLE
+       * ------------------------------------------------
        */
-      try {
+
+      if (
+        editingItem.type ===
+        "activity"
+      ) {
+        const activity =
+          editingItem.activity;
+
         const response =
-          await fetch("/api/monday");
+          await fetch("/api/monday", {
+            method: "PUT",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              itemId: activity.id,
+
+              activite:
+                editForm.activite,
+
+              startDate:
+                newDate,
+
+              startTime:
+                newStart,
+
+              endDate:
+                newDate,
+
+              endTime:
+                newEnd,
+
+              zone: newZone,
+            }),
+          });
 
         const data =
           await response.json();
 
         if (
-          response.ok &&
-          !data.error
+          !response.ok ||
+          data.error
         ) {
-          const items =
-            data.data?.boards?.[0]
-              ?.items_page?.items || [];
-
-          const formattedActivities =
-            items
-              .map((item) => ({
-                id: item.id,
-                mondayId: item.name,
-
-                activite: getColumn(
-                  item,
-                  COLUMN_IDS.activite
-                ),
-
-                date: getDate(item),
-
-                debut: getTime(
-                  item,
-                  COLUMN_IDS.debut
-                ),
-
-                fin: getTime(
-                  item,
-                  COLUMN_IDS.fin
-                ),
-
-                volet: getColumn(
-                  item,
-                  COLUMN_IDS.volet
-                ),
-
-                zone: getColumn(
-                  item,
-                  COLUMN_IDS.zone
-                ),
-
-                mode: getColumn(
-                  item,
-                  COLUMN_IDS.mode
-                ),
-
-                status: getColumn(
-                  item,
-                  COLUMN_IDS.status
-                ),
-
-                affichage:
-                  getColumn(
-                    item,
-                    COLUMN_IDS.affichage
-                  ),
-
-                categorieCouleur:
-                  getColumn(
-                    item,
-                    COLUMN_IDS.categorieCouleur
-                  ),
-
-                notes: getColumn(
-                  item,
-                  COLUMN_IDS.notes
-                ),
-              }))
-              .filter(
-                (activity) =>
-                  activity.activite &&
-                  activity.debut &&
-                  activity.fin
-              );
-
-          setActivities(
-            formattedActivities
+          throw new Error(
+            data.details?.[0]
+              ?.message ||
+              data.error ||
+              "Impossible de sauvegarder la modification."
           );
         }
-      } catch (reloadError) {
-        console.error(
-          reloadError
+
+        /*
+         * Mise à jour immédiate de l'interface.
+         */
+        setActivities((current) =>
+          current.map((item) =>
+            item.id === activity.id
+              ? {
+                  ...item,
+
+                  activite:
+                    editForm.activite,
+
+                  date: newDate,
+
+                  debut: newStart,
+
+                  fin: newEnd,
+
+                  zone: newZone,
+                }
+              : item
+          )
         );
       }
+
+      /*
+       * ------------------------------------------------
+       * GROUPE
+       * ------------------------------------------------
+       */
+
+      else if (
+        editingItem.type ===
+        "group"
+      ) {
+        const group =
+          editingItem.group;
+
+        const groupIds =
+          group.activities.map(
+            (activity) =>
+              activity.id
+          );
+
+        const saveRequests =
+          group.activities.map(
+            async (activity) => {
+              const response =
+                await fetch(
+                  "/api/monday",
+                  {
+                    method: "PUT",
+
+                    headers: {
+                      "Content-Type":
+                        "application/json",
+                    },
+
+                    body: JSON.stringify({
+                      itemId:
+                        activity.id,
+
+                      startDate:
+                        newDate,
+
+                      startTime:
+                        newStart,
+
+                      endDate:
+                        newDate,
+
+                      endTime:
+                        newEnd,
+
+                      zone:
+                        newZone,
+                    }),
+                  }
+                );
+
+              const data =
+                await response.json();
+
+              if (
+                !response.ok ||
+                data.error
+              ) {
+                throw new Error(
+                  data.details?.[0]
+                    ?.message ||
+                    data.error ||
+                    "Impossible de sauvegarder le groupe."
+                );
+              }
+
+              return data;
+            }
+          );
+
+        await Promise.all(
+          saveRequests
+        );
+
+        /*
+         * Mise à jour immédiate de tous
+         * les membres du groupe.
+         */
+        setActivities((current) =>
+          current.map((item) =>
+            groupIds.includes(
+              item.id
+            )
+              ? {
+                  ...item,
+
+                  date: newDate,
+
+                  debut: newStart,
+
+                  fin: newEnd,
+
+                  zone: newZone,
+                }
+              : item
+          )
+        );
+      }
+
+      /*
+       * Ferme le popup.
+       */
+      setEditingItem(null);
+
+      /*
+       * Si on a changé la journée,
+       * on affiche automatiquement
+       * la nouvelle journée.
+       */
+      setSelectedDay(newDate);
+
+      setSaveMessage(
+        "✓ Modification enregistrée dans Monday"
+      );
+    } catch (err) {
+      console.error(err);
+
+      setEditError(
+        err.message ||
+          "Une erreur est survenue."
+      );
     } finally {
-      setSaving(false);
+      setEditSaving(false);
     }
   }
+
+  /*
+   * ----------------------------------------------------
+   * RENDU
+   * ----------------------------------------------------
+   */
 
   return (
     <div className="min-h-screen bg-[#151619] text-[#ebebed]">
@@ -958,9 +1205,9 @@ function App() {
                     )}
 
                   <span className="text-[#777980]">
-                    Glissez-déposez un
-                    groupe pour déplacer
-                    toutes ses activités
+                    Clic = modifier •
+                    Glissez-déposez =
+                    déplacer
                   </span>
 
                 </div>
@@ -1054,6 +1301,7 @@ function App() {
                           >
 
                             {isPreview && (
+
                               <div
                                 className="pointer-events-none absolute left-1 right-1 top-1 z-[999] rounded-md border-2 border-dashed border-white bg-white/20 shadow-lg"
                                 style={{
@@ -1071,6 +1319,7 @@ function App() {
                                 </div>
 
                               </div>
+
                             )}
 
                             {groupsHere.map(
@@ -1081,6 +1330,16 @@ function App() {
                                     group
                                       .activities[0]
                                   );
+
+                                /*
+                                 * Un seul élément
+                                 * dans le groupe
+                                 */
+                                const isSingleActivity =
+                                  group
+                                    .activities
+                                    .length ===
+                                  1;
 
                                 return (
 
@@ -1097,6 +1356,42 @@ function App() {
                                     onDragEnd={
                                       handleDragEnd
                                     }
+                                    onClick={(
+                                      event
+                                    ) => {
+                                      /*
+                                       * Le clic ne doit
+                                       * pas être considéré
+                                       * comme un clic sur
+                                       * un bloc parent.
+                                       */
+                                      event.stopPropagation();
+
+                                      /*
+                                       * Si un drag vient
+                                       * d'avoir lieu,
+                                       * on ne veut pas
+                                       * ouvrir le popup.
+                                       */
+                                      if (
+                                        draggedGroup
+                                      ) {
+                                        return;
+                                      }
+
+                                      if (
+                                        isSingleActivity
+                                      ) {
+                                        openActivityEditor(
+                                          group
+                                            .activities[0]
+                                        );
+                                      } else {
+                                        openGroupEditor(
+                                          group
+                                        );
+                                      }
+                                    }}
                                     className={
                                       "absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md border-2 p-2 text-xs font-semibold text-[#202124] shadow-lg transition-shadow hover:shadow-xl active:cursor-grabbing " +
                                       (
@@ -1119,16 +1414,9 @@ function App() {
                                         groupColor.border,
                                     }}
                                     title={
-                                      group.activities
-                                        .map(
-                                          (
-                                            activity
-                                          ) =>
-                                            activity.activite
-                                        )
-                                        .join(
-                                          "\n"
-                                        )
+                                      isSingleActivity
+                                        ? "Cliquer pour modifier • Glisser pour déplacer"
+                                        : "Cliquer pour modifier le groupe • Glisser pour déplacer"
                                     }
                                   >
 
@@ -1198,6 +1486,365 @@ function App() {
           )}
 
       </main>
+
+      {/*
+       * ==================================================
+       * POPUP D'ÉDITION
+       * ==================================================
+       */}
+
+      {editingItem && (
+
+        <div
+          className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+          onMouseDown={(
+            event
+          ) => {
+            /*
+             * Cliquer dans le fond ferme
+             * le popup.
+             */
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              closeEditor();
+            }
+          }}
+        >
+
+          <div className="w-full max-w-lg rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
+
+            <div className="mb-6 flex items-start justify-between">
+
+              <div>
+
+                <div className="text-xs font-semibold uppercase tracking-wide text-[#8580d9]">
+                  {
+                    editingItem.type ===
+                    "group"
+                      ? "Modifier le groupe"
+                      : "Modifier l'activité"
+                  }
+                </div>
+
+                <h2 className="mt-1 text-xl font-semibold">
+                  {
+                    editingItem.type ===
+                    "group"
+                      ? `${editingItem.group.activities.length} activités`
+                      : "Détails de l'activité"
+                  }
+                </h2>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  closeEditor
+                }
+                disabled={editSaving}
+                className="rounded-md px-2 py-1 text-xl text-[#85858c] hover:bg-[#303137] hover:text-white"
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="space-y-5">
+
+              {editingItem.type ===
+                "activity" && (
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                    Activité
+                  </label>
+
+                  <input
+                    type="text"
+                    value={
+                      editForm.activite
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setEditForm(
+                        (current) => ({
+                          ...current,
+                          activite:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none transition focus:border-[#8580d9]"
+                  />
+
+                </div>
+
+              )}
+
+              {editingItem.type ===
+                "group" && (
+
+                <div className="rounded-lg border border-[#303137] bg-[#151619] p-3">
+
+                  <div className="mb-2 text-xs font-medium text-[#85858c]">
+                    ACTIVITÉS DU GROUPE
+                  </div>
+
+                  <div className="space-y-1">
+
+                    {editingItem.group.activities.map(
+                      (activity) => (
+
+                        <div
+                          key={
+                            activity.id
+                          }
+                          className="text-sm text-[#e4e4e7]"
+                        >
+                          •{" "}
+                          {
+                            activity.activite
+                          }
+                        </div>
+
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+
+              )}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Journée
+                </label>
+
+                <select
+                  value={
+                    editForm.date
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setEditForm(
+                      (current) => ({
+                        ...current,
+                        date:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+
+                  {days.map(
+                    (day) => (
+
+                      <option
+                        key={
+                          day.date
+                        }
+                        value={
+                          day.date
+                        }
+                      >
+                        {day.label}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                    Heure de début
+                  </label>
+
+                  <select
+                    value={
+                      editForm.debut
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setEditForm(
+                        (current) => ({
+                          ...current,
+                          debut:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                  >
+
+                    {times.map(
+                      (time) => (
+
+                        <option
+                          key={time}
+                          value={time}
+                        >
+                          {time}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+                <div>
+
+                  <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                    Heure de fin
+                  </label>
+
+                  <select
+                    value={
+                      editForm.fin
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setEditForm(
+                        (current) => ({
+                          ...current,
+                          fin:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                  >
+
+                    {times.map(
+                      (time) => (
+
+                        <option
+                          key={time}
+                          value={time}
+                        >
+                          {time}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+              </div>
+
+              <div>
+
+                <label className="mb-2 block text-sm font-medium text-[#c9c9ce]">
+                  Zone
+                </label>
+
+                <select
+                  value={
+                    editForm.zone
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setEditForm(
+                      (current) => ({
+                        ...current,
+                        zone:
+                          event.target
+                            .value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm text-white outline-none focus:border-[#8580d9]"
+                >
+
+                  {zones.map(
+                    (zone) => (
+
+                      <option
+                        key={zone}
+                        value={zone}
+                      >
+                        {zone}
+                      </option>
+
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              {editError && (
+
+                <div className="rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">
+                  {editError}
+                </div>
+
+              )}
+
+            </div>
+
+            <div className="mt-7 flex justify-end gap-3">
+
+              <button
+                type="button"
+                onClick={
+                  closeEditor
+                }
+                disabled={editSaving}
+                className="rounded-lg border border-[#3a3b42] bg-[#303137] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#404148] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleSaveEditor
+                }
+                disabled={
+                  editSaving
+                }
+                className="rounded-lg bg-[#8580d9] px-5 py-2.5 text-sm font-semibold text-[#151619] transition hover:bg-[#9995e3] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+
+                {editSaving
+                  ? "Enregistrement…"
+                  : "Enregistrer"}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
 
     </div>
   );
