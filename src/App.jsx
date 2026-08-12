@@ -278,6 +278,9 @@ function App() {
   const [contextMenu, setContextMenu] =
     useState(null);
 
+  const [printScope, setPrintScope] =
+    useState("selected");
+
   /*
    * ================================
    * POPUP MODIFICATION
@@ -837,6 +840,48 @@ function App() {
         42 +
       2
     );
+  }
+
+  function getPrintGroups(dayDate) {
+    const groups = {};
+
+    activities
+      .filter(
+        (activity) =>
+          activity.date === dayDate
+      )
+      .forEach((activity) => {
+        const key = [
+          activity.zone,
+          activity.debut,
+          activity.fin,
+        ].join("|");
+
+        if (!groups[key]) {
+          groups[key] = {
+            zone: activity.zone,
+            debut: activity.debut,
+            fin: activity.fin,
+            activities: [],
+          };
+        }
+
+        groups[key].activities.push(
+          activity
+        );
+      });
+
+    return Object.values(groups);
+  }
+
+  function handlePrint(scope) {
+    setPrintScope(scope);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+      });
+    });
   }
 
   /*
@@ -1992,15 +2037,6 @@ function App() {
 
       <main className="calendar-main overflow-x-auto p-6">
 
-        <div className="print-heading">
-          <div>FESTIVAL VITA 2026</div>
-          <h1>
-            Programmation — {days.find(
-              (day) => day.date === selectedDay
-            )?.label}
-          </h1>
-        </div>
-
         {loading && (
 
           <div className="mx-auto max-w-[1800px] py-10 text-center text-[#a1a1a8]">
@@ -2045,13 +2081,26 @@ function App() {
 
                 <div className="flex items-center gap-4">
 
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="rounded-lg border border-[#8580d9] bg-[#24233a] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]"
-                  >
-                    Imprimer / PDF
-                  </button>
+                  <div className="flex overflow-hidden rounded-lg border border-[#8580d9] bg-[#24233a]">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handlePrint("selected")
+                      }
+                      className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]"
+                    >
+                      Imprimer cette journée
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handlePrint("all")
+                      }
+                      className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]"
+                    >
+                      Les 4 jours
+                    </button>
+                  </div>
 
                   {saving && (
                     <span className="text-[#d9ad7c]">
@@ -2450,6 +2499,122 @@ function App() {
           )}
 
       </main>
+
+      <div className="print-document">
+        {(printScope === "all"
+          ? days
+          : days.filter(
+              (day) =>
+                day.date === selectedDay
+            )
+        ).map((day) => {
+          const printGroups =
+            getPrintGroups(day.date);
+
+          return (
+            <section
+              key={day.date}
+              className="print-page"
+            >
+              <div className="print-page-title">
+                <div>FESTIVAL VITA 2026</div>
+                <h1>
+                  Programmation — {day.label}
+                </h1>
+              </div>
+
+              <div className="print-zone-headings">
+                <div />
+                {zones.map((zone) => (
+                  <div key={zone}>
+                    {zone}
+                  </div>
+                ))}
+              </div>
+
+              <div className="print-schedule">
+                <div className="print-time-axis">
+                  {[
+                    "05:30", "06:00", "07:00",
+                    "08:00", "09:00", "10:00",
+                    "11:00", "12:00", "13:00",
+                    "14:00", "15:00", "16:00",
+                    "17:00", "18:00", "19:00",
+                    "20:00", "21:00", "22:00",
+                    "23:00", "23:30", "24:00",
+                  ].map((time) => (
+                    <span
+                      key={time}
+                      style={{
+                        top:
+                          `${(((time === "24:00" ? 1440 : timeToMinutes(time)) - 330) / 1110) * 100}%`,
+                      }}
+                    >
+                      {time}
+                    </span>
+                  ))}
+                </div>
+
+                {zones.map((zone) => (
+                  <div
+                    key={zone}
+                    className="print-zone-lane"
+                  >
+                    {printGroups
+                      .filter(
+                        (group) =>
+                          group.zone === zone
+                      )
+                      .map((group) => {
+                        const start =
+                          timeToMinutes(
+                            group.debut
+                          );
+                        const end =
+                          timeToMinutes(
+                            group.fin
+                          );
+                        const color =
+                          getActivityColor(
+                            group.activities[0]
+                          );
+
+                        return (
+                          <div
+                            key={`${zone}-${group.debut}-${group.fin}`}
+                            className="print-activity"
+                            style={{
+                              top:
+                                `${((start - 330) / 1110) * 100}%`,
+                              height:
+                                `${Math.max(((end - start) / 1110) * 100, 0.8)}%`,
+                              backgroundColor:
+                                color.background,
+                              borderColor:
+                                color.border,
+                            }}
+                          >
+                            <strong>
+                              {group.activities
+                                .map(
+                                  (activity) =>
+                                    activity.activite
+                                )
+                                .join(" • ")}
+                            </strong>
+                            <span>
+                              {group.debut}–{group.fin}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
 
       {contextMenu && (
         <div
