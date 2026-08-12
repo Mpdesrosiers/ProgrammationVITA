@@ -69,7 +69,6 @@ const zoneColors = {
 
 const COLUMN_IDS = {
   activite: "text_mm5z84v8",
-  jour: "dropdown_mm634c9n",
   debut: "date_mm63hcxz",
   fin: "date_mm63gzbs",
   volet: "dropdown_mm63ffn6",
@@ -122,11 +121,28 @@ function timeToMinutes(time) {
   return hours * 60 + minutes;
 }
 
+function minutesToTime(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(
+    minutes
+  ).padStart(2, "0")}`;
+}
+
 function App() {
-  const [selectedDay, setSelectedDay] = useState("2026-09-18");
+  const [selectedDay, setSelectedDay] = useState(
+    "2026-09-18"
+  );
+
   const [activities, setActivities] = useState([]);
+
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState("");
+
+  const [draggedActivity, setDraggedActivity] =
+    useState(null);
 
   useEffect(() => {
     async function loadActivities() {
@@ -134,22 +150,25 @@ function App() {
         setLoading(true);
 
         const response = await fetch("/api/monday");
+
         const data = await response.json();
 
         if (!response.ok || data.error) {
           throw new Error(
             data.details?.[0]?.message ||
               data.error ||
-              "Impossible de charger les données de Monday."
+              "Impossible de charger les données."
           );
         }
 
         const items =
-          data.data?.boards?.[0]?.items_page?.items || [];
+          data.data?.boards?.[0]?.items_page?.items ||
+          [];
 
         const formattedActivities = items
           .map((item) => ({
             id: item.id,
+
             mondayId: item.name,
 
             activite: getColumn(
@@ -204,17 +223,19 @@ function App() {
               COLUMN_IDS.notes
             ),
           }))
-          .filter((activity) => activity.activite);
+          .filter(
+            (activity) =>
+              activity.activite &&
+              activity.debut &&
+              activity.fin
+          );
 
         setActivities(formattedActivities);
-        setError("");
 
-        console.log(
-          "Activités récupérées de Monday :",
-          formattedActivities
-        );
+        setError("");
       } catch (err) {
         console.error(err);
+
         setError(err.message);
       } finally {
         setLoading(false);
@@ -230,41 +251,71 @@ function App() {
     );
   }, [activities, selectedDay]);
 
-  function getActivityStyle(activity) {
+  function getActivityHeight(activity) {
     const start = timeToMinutes(activity.debut);
+
     const end = timeToMinutes(activity.fin);
 
-    const calendarStart = 5 * 60 + 30;
-    const pixelsPer30Minutes = 56;
+    const duration = end - start;
 
-    const top =
-      ((start - calendarStart) / 30) *
-      pixelsPer30Minutes;
-
-    const height = Math.max(
-      ((end - start) / 30) *
-        pixelsPer30Minutes,
+    return Math.max(
+      (duration / 30) * 56,
       42
     );
+  }
 
-    return {
-      top: `${top}px`,
-      height: `${height}px`,
-      backgroundColor:
-        zoneColors[activity.zone] || "#8580d9",
-    };
+  function handleDragStart(activity) {
+    setDraggedActivity(activity);
+  }
+
+  function handleDrop(event, newTime, newZone) {
+    event.preventDefault();
+
+    if (!draggedActivity) return;
+
+    const oldStart = timeToMinutes(
+      draggedActivity.debut
+    );
+
+    const oldEnd = timeToMinutes(
+      draggedActivity.fin
+    );
+
+    const duration = oldEnd - oldStart;
+
+    const newStart = timeToMinutes(newTime);
+
+    const newEnd = newStart + duration;
+
+    setActivities((current) =>
+      current.map((activity) =>
+        activity.id === draggedActivity.id
+          ? {
+              ...activity,
+              zone: newZone,
+              debut: minutesToTime(newStart),
+              fin: minutesToTime(newEnd),
+            }
+          : activity
+      )
+    );
+
+    setDraggedActivity(null);
   }
 
   return (
     <div className="min-h-screen bg-[#151619] text-[#ebebed]">
 
       {/* HEADER */}
+
       <header className="border-b border-[#303137] bg-[#1b1c20] px-6 py-5">
+
         <div className="mx-auto max-w-[1800px]">
 
           <div className="flex items-center justify-between gap-6">
 
             <div>
+
               <div className="text-sm font-semibold text-[#8580d9]">
                 FESTIVAL VITA 2026
               </div>
@@ -272,10 +323,13 @@ function App() {
               <h1 className="mt-1 text-2xl font-semibold">
                 Programmation
               </h1>
+
             </div>
 
             <div className="flex gap-2">
+
               {days.map((day) => (
+
                 <button
                   key={day.date}
                   type="button"
@@ -284,32 +338,42 @@ function App() {
                   }
                   className={
                     "rounded-md px-5 py-2 text-sm font-semibold transition " +
-                    (selectedDay === day.date
-                      ? "bg-[#8580d9] text-[#151619]"
-                      : "bg-[#303137] text-white hover:bg-[#404148]")
+                    (
+                      selectedDay === day.date
+                        ? "bg-[#8580d9] text-[#151619]"
+                        : "bg-[#303137] text-white hover:bg-[#404148]"
+                    )
                   }
                 >
                   {day.label}
                 </button>
+
               ))}
+
             </div>
 
           </div>
 
         </div>
+
       </header>
 
       {/* CALENDRIER */}
+
       <main className="overflow-x-auto p-6">
 
         {loading && (
+
           <div className="mx-auto max-w-[1800px] py-10 text-center text-[#a1a1a8]">
             Chargement de la programmation…
           </div>
+
         )}
 
         {error && (
+
           <div className="mx-auto max-w-[1800px] rounded-lg border border-[#df2f4a] bg-[#24171a] p-5 text-[#ff8b9a]">
+
             <div className="font-semibold">
               Erreur
             </div>
@@ -317,17 +381,28 @@ function App() {
             <div className="mt-2 text-sm">
               {error}
             </div>
+
           </div>
+
         )}
 
         {!loading && !error && (
+
           <>
-            <div className="mx-auto mb-4 max-w-[1800px] text-sm text-[#8580d9]">
-              {selectedActivities.length} activité
-              {selectedActivities.length !== 1
-                ? "s"
-                : ""}{" "}
-              pour cette journée
+
+            <div className="mx-auto mb-4 flex max-w-[1800px] items-center justify-between text-sm">
+
+              <div className="text-[#8580d9]">
+                {selectedActivities.length} activité
+                {selectedActivities.length !== 1
+                  ? "s"
+                  : ""}
+              </div>
+
+              <div className="text-[#777980]">
+                Glissez-déposez une activité pour la déplacer
+              </div>
+
             </div>
 
             <div
@@ -338,15 +413,19 @@ function App() {
               }}
             >
 
-              {/* COIN SUPÉRIEUR GAUCHE */}
+              {/* COIN */}
+
               <div className="border-b border-r border-[#303137] bg-[#151619]" />
 
               {/* ZONES */}
+
               {zones.map((zone) => (
+
                 <div
                   key={zone}
                   className="border-b border-r border-[#303137] bg-[#1b1c20] px-3 py-4 text-center"
                 >
+
                   <div
                     className="mx-auto mb-2 h-1 w-10 rounded-full"
                     style={{
@@ -358,19 +437,25 @@ function App() {
                   <div className="text-sm font-semibold">
                     {zone}
                   </div>
+
                 </div>
+
               ))}
 
-              {/* HEURES + CELLULES */}
+              {/* CALENDRIER */}
+
               {times.map((time) => (
+
                 <React.Fragment key={time}>
 
                   {/* HEURE */}
+
                   <div className="flex h-14 items-center justify-end border-b border-r border-[#303137] bg-[#151619] px-3 text-xs text-[#a1a1a8]">
                     {time}
                   </div>
 
                   {/* ZONES */}
+
                   {zones.map((zone) => {
 
                     const activitiesHere =
@@ -381,25 +466,51 @@ function App() {
                       );
 
                     return (
+
                       <div
                         key={`${time}-${zone}`}
+                        onDragOver={(event) =>
+                          event.preventDefault()
+                        }
+                        onDrop={(event) =>
+                          handleDrop(
+                            event,
+                            time,
+                            zone
+                          )
+                        }
                         className="relative h-14 border-b border-r border-[#303137] bg-[#151619]"
                       >
 
                         {activitiesHere.map(
                           (activity) => (
+
                             <div
                               key={activity.id}
-                              className="absolute left-1 right-1 z-10 overflow-hidden rounded-md p-2 text-xs font-semibold text-white shadow-lg"
-                              style={getActivityStyle(
-                                activity
-                              )}
+                              draggable
+                              onDragStart={() =>
+                                handleDragStart(
+                                  activity
+                                )
+                              }
+                              className="absolute left-1 right-1 top-1 z-20 cursor-grab overflow-hidden rounded-md p-2 text-xs font-semibold text-white shadow-lg active:cursor-grabbing"
+                              style={{
+                                height:
+                                  getActivityHeight(
+                                    activity
+                                  ),
+                                backgroundColor:
+                                  zoneColors[
+                                    activity.zone
+                                  ] ||
+                                  "#8580d9",
+                              }}
                               title={
                                 `${activity.activite}\n` +
-                                `${activity.debut} – ${activity.fin}\n` +
-                                `${activity.status || ""}`
+                                `${activity.debut} – ${activity.fin}`
                               }
                             >
+
                               <div>
                                 {activity.activite}
                               </div>
@@ -408,19 +519,26 @@ function App() {
                                 {activity.debut} –{" "}
                                 {activity.fin}
                               </div>
+
                             </div>
+
                           )
                         )}
 
                       </div>
+
                     );
+
                   })}
 
                 </React.Fragment>
+
               ))}
 
             </div>
+
           </>
+
         )}
 
       </main>
