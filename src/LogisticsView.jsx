@@ -350,7 +350,7 @@ export default function LogisticsView({ canModify }) {
         )}
       </div>
 
-      <div className="logistics-print-document">
+      <div className={`logistics-print-document ${printScope === "all" ? "is-all-days" : "is-single-day"}`}>
         {(printScope === "all"
           ? dates
           : dates.filter((date) => date === selectedDate)
