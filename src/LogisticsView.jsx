@@ -252,6 +252,24 @@ export default function LogisticsView({ canModify }) {
     });
   }
 
+  function openCreateEditor() {
+    if (!canModify) return;
+    setEditingAction(null);
+    setEditForm({
+      action: "",
+      startDate: selectedDate || dates[0] || "",
+      startTime: "08:00",
+      endDate: selectedDate || dates[0] || "",
+      endTime: "",
+      responsible: "",
+      status: "",
+      departure: "",
+      arrival: "",
+      type: "",
+      notes: "",
+    });
+  }
+
   function closeEditor() {
     if (editSaving) return;
     setEditingAction(null);
@@ -260,15 +278,15 @@ export default function LogisticsView({ canModify }) {
 
   async function saveAction(event) {
     event.preventDefault();
-    if (!editingAction || !editForm) return;
+    if (!editForm) return;
     setEditSaving(true);
     setError("");
     try {
       const response = await fetch("/api/logistics", {
-        method: "PUT",
+        method: editingAction ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          itemId: editingAction.id,
+          ...(editingAction ? { itemId: editingAction.id } : {}),
           ...editForm,
           endDate: editForm.endTime ? editForm.endDate || editForm.startDate : "",
         }),
@@ -277,7 +295,9 @@ export default function LogisticsView({ canModify }) {
       if (!response.ok || data.error) {
         throw new Error(data.details || data.error || "Impossible d'enregistrer la modification.");
       }
+      const savedDate = editForm.startDate;
       await load(true);
+      setSelectedDate(savedDate);
       setEditingAction(null);
       setEditForm(null);
     } catch (err) {
@@ -332,6 +352,9 @@ export default function LogisticsView({ canModify }) {
               <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Imprimer cette journée</button>
               <button type="button" onClick={() => printLogistics("all")} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Tous les jours</button>
             </div>
+            {canModify && (
+              <button type="button" onClick={openCreateEditor} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] hover:bg-[#9995e3]">+ Ajouter une action</button>
+            )}
             <button onClick={() => load()} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm hover:bg-[#404148]">Actualiser</button>
           </div>
         </div>
@@ -518,7 +541,7 @@ export default function LogisticsView({ canModify }) {
         )}
       </div>
 
-      {editingAction && editForm && (
+      {editForm && (
         <div
           className="no-print fixed inset-0 z-[5000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onMouseDown={(event) => {
@@ -529,7 +552,7 @@ export default function LogisticsView({ canModify }) {
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <div className="text-xs font-semibold uppercase text-[#8580d9]">Modification Monday</div>
-                <h2 className="mt-1 text-xl font-semibold">Modifier l’action logistique</h2>
+                <h2 className="mt-1 text-xl font-semibold">{editingAction ? "Modifier l’action logistique" : "Ajouter une action logistique"}</h2>
               </div>
               <button type="button" onClick={closeEditor} className="rounded px-2 py-1 text-xl text-[#a1a1a8] hover:bg-[#303137] hover:text-white">×</button>
             </div>
@@ -571,9 +594,9 @@ export default function LogisticsView({ canModify }) {
               <label className="text-sm">Type
                 <select value={editForm.type} onChange={(event) => setEditForm((current) => ({ ...current, type: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5"><option value="">Sans type</option>{typeOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select>
               </label>
-              <label className="text-sm">Personne(s) assignée(s) dans Monday
+              {editingAction && <label className="text-sm">Personne(s) assignée(s) dans Monday
                 <input readOnly value={editingAction.people || "Aucune"} className="mt-1 w-full rounded-lg border border-[#303137] bg-[#202126] px-3 py-2.5 text-[#a1a1a8]" />
-              </label>
+              </label>}
               <label className="text-sm">Départ
                 <input value={editForm.departure} onChange={(event) => setEditForm((current) => ({ ...current, departure: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
               </label>
@@ -588,7 +611,7 @@ export default function LogisticsView({ canModify }) {
             {error && <div className="mt-4 rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">{error}</div>}
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={closeEditor} disabled={editSaving} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm font-semibold disabled:opacity-50">Annuler</button>
-              <button type="submit" disabled={editSaving} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] disabled:opacity-50">{editSaving ? "Sauvegarde…" : "Enregistrer dans Monday"}</button>
+              <button type="submit" disabled={editSaving} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] disabled:opacity-50">{editSaving ? "Sauvegarde…" : editingAction ? "Enregistrer dans Monday" : "Ajouter dans Monday"}</button>
             </div>
           </form>
         </div>
