@@ -35,6 +35,7 @@ export default function LogisticsView({ canModify }) {
   const [responsible, setResponsible] = useState("");
   const [mineOnly, setMineOnly] = useState(false);
   const [savingId, setSavingId] = useState(null);
+  const [printScope, setPrintScope] = useState("selected");
 
   async function load(silent = false) {
     try {
@@ -101,6 +102,28 @@ export default function LogisticsView({ canModify }) {
     }
   }
 
+  function printLogistics(scope) {
+    setPrintScope(scope);
+    document.documentElement.dataset.printMode = "logistics";
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+        delete document.documentElement.dataset.printMode;
+      });
+    });
+  }
+
+  function actionsForDate(date) {
+    return actions
+      .filter((action) => action.start.date === date)
+      .sort((a, b) =>
+        `${a.start.time}-${a.action}`.localeCompare(
+          `${b.start.time}-${b.action}`
+        )
+      );
+  }
+
   if (loading) return <div className="p-10 text-center text-[#a1a1a8]">Chargement du déroulement logistique…</div>;
 
   return (
@@ -111,7 +134,13 @@ export default function LogisticsView({ canModify }) {
             <div className="text-xs font-bold uppercase tracking-wider text-[#8580d9]">Déroulement opérationnel</div>
             <h2 className="mt-1 text-2xl font-semibold">Logistique — ligne du temps</h2>
           </div>
-          <button onClick={() => load()} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm hover:bg-[#404148]">Actualiser</button>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex overflow-hidden rounded-lg border border-[#8580d9] bg-[#24233a]">
+              <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Imprimer cette journée</button>
+              <button type="button" onClick={() => printLogistics("all")} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Tous les jours</button>
+            </div>
+            <button onClick={() => load()} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm hover:bg-[#404148]">Actualiser</button>
+          </div>
         </div>
 
         <div className="mb-5 flex gap-2 overflow-x-auto pb-2">
@@ -156,6 +185,52 @@ export default function LogisticsView({ canModify }) {
             );
           })}
         </div>
+      </div>
+
+      <div className="logistics-print-document">
+        {(printScope === "all"
+          ? dates
+          : dates.filter((date) => date === selectedDate)
+        ).map((date) => (
+          <section key={date} className="logistics-print-day">
+            <header className="logistics-print-title">
+              <div>FESTIVAL VITA 2026 · DÉROULEMENT LOGISTIQUE</div>
+              <h1>{displayDate(date)}</h1>
+              <span>{actionsForDate(date).length} action{actionsForDate(date).length !== 1 ? "s" : ""}</span>
+            </header>
+
+            <table className="logistics-print-table">
+              <thead>
+                <tr>
+                  <th>Heure</th>
+                  <th>Action</th>
+                  <th>Type</th>
+                  <th>Départ → Arrivée</th>
+                  <th>Qui</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {actionsForDate(date).map((action) => {
+                  const [background, border] = colorFor(action.type);
+                  return (
+                    <tr key={action.id}>
+                      <td className="logistics-print-time">
+                        {action.start.time}
+                        {action.end?.time && <small>–{action.end.time}</small>}
+                      </td>
+                      <td className="logistics-print-action" style={{ borderLeftColor: border }}>{action.action}</td>
+                      <td><span className="logistics-print-type" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span></td>
+                      <td>{action.departure || "—"} → {action.arrival || "—"}</td>
+                      <td>{action.people || action.responsible || "—"}</td>
+                      <td>{action.status || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+        ))}
       </div>
     </main>
   );
