@@ -14,6 +14,7 @@ const COLUMNS = {
   departure: "text_mm66xzp4",
   arrival: "text_mm667te8",
   type: "color_mm66qgbk",
+  notes: "text_mm66r4hv",
 };
 
 function parseDateColumn(column) {
@@ -132,6 +133,7 @@ export default async function handler(req, res) {
           departure: column(COLUMNS.departure)?.text || "",
           arrival: column(COLUMNS.arrival)?.text || "",
           type: column(COLUMNS.type)?.text || "",
+          notes: column(COLUMNS.notes)?.text || "",
           updatedAt: item.updated_at,
         };
       });
