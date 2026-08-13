@@ -25,6 +25,57 @@ function displayDate(value) {
   }).format(new Date(`${value}T12:00:00`));
 }
 
+function actionInterval(action) {
+  const start = new Date(
+    `${action.start.date}T${action.start.time || "00:00"}:00`
+  ).getTime();
+  const parsedEnd = action.end?.date
+    ? new Date(
+        `${action.end.date}T${action.end.time || "00:00"}:00`
+      ).getTime()
+    : NaN;
+
+  return {
+    start,
+    end:
+      Number.isFinite(parsedEnd) && parsedEnd > start
+        ? parsedEnd
+        : start + 30 * 60 * 1000,
+  };
+}
+
+function buildOverlapGroups(actions) {
+  const groups = [];
+
+  actions.forEach((action) => {
+    const interval = actionInterval(action);
+    let group = groups.at(-1);
+
+    if (!group || interval.start >= group.end) {
+      group = {
+        end: interval.end,
+        laneEnds: [],
+        actions: [],
+      };
+      groups.push(group);
+    } else {
+      group.end = Math.max(group.end, interval.end);
+    }
+
+    let lane = group.laneEnds.findIndex(
+      (laneEnd) => laneEnd <= interval.start
+    );
+    if (lane === -1) lane = group.laneEnds.length;
+    group.laneEnds[lane] = interval.end;
+    group.actions.push({ action, lane });
+  });
+
+  return groups.map((group) => ({
+    ...group,
+    laneCount: group.laneEnds.length,
+  }));
+}
+
 export default function LogisticsView({ canModify }) {
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +132,10 @@ export default function LogisticsView({ canModify }) {
       .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
   }, [actions, selectedDate, search, status, responsible, mineOnly]);
+  const overlapGroups = useMemo(
+    () => buildOverlapGroups(visible),
+    [visible]
+  );
 
   async function changeStatus(action, newStatus) {
     setSavingId(action.id);
@@ -160,30 +215,59 @@ export default function LogisticsView({ canModify }) {
 
         <div className="relative ml-4 border-l-2 border-[#3a3b42] md:ml-24">
           {visible.length === 0 && <div className="ml-8 rounded-lg border border-[#303137] bg-[#1b1c20] p-6 text-center text-[#a1a1a8]">Aucune action pour ces filtres.</div>}
-          {visible.map((action) => {
-            const [background, border] = colorFor(action.type);
-            return (
-              <article key={action.id} className="relative mb-4 ml-7 md:ml-12">
-                <div className="absolute -left-[37px] top-5 h-4 w-4 rounded-full border-4 border-[#151619] md:-left-[57px]" style={{ backgroundColor: border }} />
-                <time className="mb-1 block text-sm font-bold text-[#b9b6ff] md:absolute md:-left-[142px] md:top-4 md:w-20 md:text-right md:text-base">{action.start.time}</time>
-                <div className="overflow-hidden rounded-xl border-l-[6px] bg-[#202126] shadow-lg" style={{ borderLeftColor: border }}>
-                  <div className="p-4 md:p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="mb-2 flex flex-wrap gap-2"><span className="rounded-full px-2.5 py-1 text-[11px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>{action.end?.time && <span className="rounded-full bg-[#303137] px-2.5 py-1 text-[11px] text-[#c9c9ce]">{action.start.time}–{action.end.time}</span>}</div>
-                        <h3 className="text-lg font-semibold">{action.action}</h3>
-                      </div>
-                      {canModify ? <select disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm font-semibold"><option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option></select> : <span className="rounded-lg bg-[#303137] px-3 py-2 text-sm">{action.status || "Sans statut"}</span>}
-                    </div>
-                    <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-                      {(action.departure || action.arrival) && <div><div className="text-xs uppercase text-[#85858c]">Déplacement / lieu</div><div className="mt-1">{action.departure || "—"} <span className="text-[#8580d9]">→</span> {action.arrival || "—"}</div></div>}
-                      {(action.people || action.responsible) && <div><div className="text-xs uppercase text-[#85858c]">Qui</div><div className="mt-1 font-semibold">{action.people || action.responsible}</div>{action.people && action.responsible && <div className="mt-1 text-xs text-[#85858c]">Équipe : {action.responsible}</div>}</div>}
-                    </div>
-                  </div>
+          {overlapGroups.map((group, groupIndex) => (
+            <section
+              key={`${group.actions[0].action.id}-${groupIndex}`}
+              className="relative mb-4 ml-7 md:ml-12"
+            >
+              <div className="absolute -left-[37px] top-5 h-4 w-4 rounded-full border-4 border-[#151619] bg-[#8580d9] md:-left-[57px]" />
+              <time className="mb-2 block text-sm font-bold text-[#b9b6ff] md:absolute md:-left-[142px] md:top-4 md:w-20 md:text-right md:text-base">
+                {group.actions[0].action.start.time}
+              </time>
+              {group.laneCount > 1 && (
+                <div className="mb-2 text-xs font-semibold text-[#a9a6e8] md:hidden">
+                  {group.laneCount} actions simultanées
                 </div>
-              </article>
-            );
-          })}
+              )}
+              <div
+                className="grid grid-cols-1 items-start gap-3 md:[grid-template-columns:var(--overlap-columns)]"
+                style={{
+                  "--overlap-columns": `repeat(${group.laneCount}, minmax(0, 1fr))`,
+                }}
+              >
+                {group.actions.map(({ action, lane }) => {
+                  const [background, border] = colorFor(action.type);
+                  return (
+                    <article
+                      key={action.id}
+                      className="min-w-0 overflow-hidden rounded-xl border-l-[6px] bg-[#202126] shadow-lg md:[grid-column:var(--overlap-lane)]"
+                      style={{
+                        borderLeftColor: border,
+                        "--overlap-lane": lane + 1,
+                      }}
+                    >
+                      <div className="p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="mb-2 flex flex-wrap gap-2">
+                              <span className="rounded-full px-2.5 py-1 text-[11px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
+                              <span className="rounded-full bg-[#303137] px-2.5 py-1 text-[11px] text-[#c9c9ce]">{action.start.time}{action.end?.time ? `–${action.end.time}` : ""}</span>
+                            </div>
+                            <h3 className="text-base font-semibold md:text-lg">{action.action}</h3>
+                          </div>
+                          {canModify ? <select disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="max-w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm font-semibold"><option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option></select> : <span className="rounded-lg bg-[#303137] px-3 py-2 text-sm">{action.status || "Sans statut"}</span>}
+                        </div>
+                        <div className="mt-4 grid gap-3 text-sm">
+                          {(action.departure || action.arrival) && <div><div className="text-xs uppercase text-[#85858c]">Déplacement / lieu</div><div className="mt-1">{action.departure || "—"} <span className="text-[#8580d9]">→</span> {action.arrival || "—"}</div></div>}
+                          {(action.people || action.responsible) && <div><div className="text-xs uppercase text-[#85858c]">Qui</div><div className="mt-1 font-semibold">{action.people || action.responsible}</div>{action.people && action.responsible && <div className="mt-1 text-xs text-[#85858c]">Équipe : {action.responsible}</div>}</div>}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
 
