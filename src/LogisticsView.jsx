@@ -50,7 +50,12 @@ function actionInterval(action, selectedDate) {
 
   return {
     start,
-    end: end > start ? end : start + 30,
+    end: isMilestone
+      ? start + 15
+      : end > start
+      ? end
+      : start + 30,
+    collisionStart: isMilestone ? start - 15 : start,
     isMilestone,
   };
 }
@@ -58,11 +63,22 @@ function actionInterval(action, selectedDate) {
 function buildTimeline(actions, selectedDate) {
   const groups = [];
 
-  actions.forEach((action) => {
-    const interval = actionInterval(action, selectedDate);
+  const preparedActions = actions
+    .map((action) => ({
+      action,
+      ...actionInterval(action, selectedDate),
+    }))
+    .sort(
+      (a, b) =>
+        a.collisionStart - b.collisionStart ||
+        a.start - b.start
+    );
+
+  preparedActions.forEach((entry) => {
+    const { action, ...interval } = entry;
     let group = groups.at(-1);
 
-    if (!group || interval.start >= group.end) {
+    if (!group || interval.collisionStart >= group.end) {
       group = {
         end: interval.end,
         laneEnds: [],
@@ -74,7 +90,7 @@ function buildTimeline(actions, selectedDate) {
     }
 
     let lane = group.laneEnds.findIndex(
-      (laneEnd) => laneEnd <= interval.start
+      (laneEnd) => laneEnd <= interval.collisionStart
     );
     if (lane === -1) lane = group.laneEnds.length;
     group.laneEnds[lane] = interval.end;
