@@ -229,6 +229,26 @@ p {
     white-space: nowrap;
   }
 
+  .logistics-print-block.is-milestone {
+    height: auto;
+    min-height: 13mm;
+    transform: translateY(-50%);
+    overflow: visible;
+    border-left-width: 1.2mm;
+  }
+
+  .logistics-print-block.is-milestone::before {
+    position: absolute;
+    top: 50%;
+    left: -2.4mm;
+    width: 3.2mm;
+    height: 3.2mm;
+    transform: translateY(-50%) rotate(45deg);
+    border: 0.4mm solid #ffffff;
+    background: var(--milestone-color);
+    content: "";
+  }
+
   .logistics-print-block > strong {
     font-size: 6.5pt;
   }
@@ -320,6 +340,10 @@ p {
   .logistics-print-document.is-all-days .logistics-print-block > small {
     margin-top: 0.15mm;
     font-size: 4.1pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block.is-milestone {
+    min-height: 9mm;
   }
 
   .logistics-print-document.is-single-day .logistics-print-title {
