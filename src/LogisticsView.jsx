@@ -160,6 +160,10 @@ export default function LogisticsView({ canModify }) {
   const [editingAction, setEditingAction] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [undoing, setUndoing] = useState(false);
+  const [syncStates, setSyncStates] = useState({});
+  const [operationalMode, setOperationalMode] = useState(false);
 
   async function load(silent = false) {
     try {
@@ -210,25 +214,56 @@ export default function LogisticsView({ canModify }) {
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
   }, [actions, selectedDate, search, status, responsible, mineOnly]);
   const timeline = useMemo(
-    () => buildTimeline(visible, selectedDate),
-    [visible, selectedDate]
+    () => buildTimeline(
+      operationalMode ? visible.filter((action) => action.isMine) : visible,
+      selectedDate
+    ),
+    [visible, selectedDate, operationalMode]
   );
+  const displayedActions = operationalMode
+    ? visible.filter((action) => action.isMine)
+    : visible;
+
+  function addHistory(label, before) {
+    setHistory((current) => [
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        label,
+        before,
+        createdAt: new Date(),
+      },
+      ...current,
+    ].slice(0, 12));
+  }
+
+  function setSync(id, state, message = "") {
+    setSyncStates((current) => ({
+      ...current,
+      [id]: { state, message },
+    }));
+  }
 
   async function changeStatus(action, newStatus) {
     setSavingId(action.id);
+    setSync(action.id, "saving");
     const previous = action.status;
     setActions((current) => current.map((item) => item.id === action.id ? { ...item, status: newStatus } : item));
     try {
       const response = await fetch("/api/logistics", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: action.id, status: newStatus }),
+        body: JSON.stringify({ itemId: action.id, status: newStatus, expectedUpdatedAt: action.updatedAt }),
       });
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error);
+      addHistory(`Statut de « ${action.action} »`, action);
+      setSync(action.id, "saved");
+      await load(true);
     } catch (err) {
       setActions((current) => current.map((item) => item.id === action.id ? { ...item, status: previous } : item));
       setError(err.message);
+      setSync(action.id, "error", err.message);
+      if (err.message.includes("autre personne")) await load(true);
     } finally {
       setSavingId(null);
     }
@@ -270,6 +305,15 @@ export default function LogisticsView({ canModify }) {
     });
   }
 
+  function duplicateAction() {
+    if (!editingAction || !editForm) return;
+    setEditingAction(null);
+    setEditForm((current) => ({
+      ...current,
+      action: `${current.action} — copie`,
+    }));
+  }
+
   function closeEditor() {
     if (editSaving) return;
     setEditingAction(null);
@@ -281,12 +325,14 @@ export default function LogisticsView({ canModify }) {
     if (!editForm) return;
     setEditSaving(true);
     setError("");
+    if (editingAction) setSync(editingAction.id, "saving");
     try {
       const response = await fetch("/api/logistics", {
         method: editingAction ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...(editingAction ? { itemId: editingAction.id } : {}),
+          ...(editingAction ? { expectedUpdatedAt: editingAction.updatedAt } : {}),
           ...editForm,
           endDate: editForm.endTime ? editForm.endDate || editForm.startDate : "",
         }),
@@ -296,12 +342,99 @@ export default function LogisticsView({ canModify }) {
         throw new Error(data.details || data.error || "Impossible d'enregistrer la modification.");
       }
       const savedDate = editForm.startDate;
+      if (editingAction) {
+        addHistory(`Modification de « ${editingAction.action} »`, editingAction);
+        setSync(editingAction.id, "saved");
+      }
       await load(true);
       setSelectedDate(savedDate);
       setEditingAction(null);
       setEditForm(null);
     } catch (err) {
       setError(err.message);
+      if (editingAction) setSync(editingAction.id, "error", err.message);
+      if (err.message.includes("autre personne")) await load(true);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  function actionPayload(action) {
+    return {
+      itemId: action.id,
+      expectedUpdatedAt: actions.find((item) => item.id === action.id)?.updatedAt,
+      action: action.action,
+      startDate: action.start?.date,
+      startTime: action.start?.time,
+      endDate: action.end?.date || "",
+      endTime: action.end?.time || "",
+      responsible: action.responsible || "",
+      status: action.status || "",
+      departure: action.departure || "",
+      arrival: action.arrival || "",
+      type: action.type || "",
+      notes: action.notes || "",
+    };
+  }
+
+  async function undoLastChange() {
+    const entry = history[0];
+    if (!entry || undoing) return;
+    setUndoing(true);
+    setSync(entry.before.id, "saving");
+    try {
+      const response = await fetch("/api/logistics", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(actionPayload(entry.before)),
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error);
+      setHistory((current) => current.slice(1));
+      setSync(entry.before.id, "saved");
+      await load(true);
+    } catch (err) {
+      setError(err.message);
+      setSync(entry.before.id, "error", err.message);
+      await load(true);
+    } finally {
+      setUndoing(false);
+    }
+  }
+
+  useEffect(() => {
+    function handleUndo(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        const target = event.target;
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName)) return;
+        event.preventDefault();
+        undoLastChange();
+      }
+    }
+    window.addEventListener("keydown", handleUndo);
+    return () => window.removeEventListener("keydown", handleUndo);
+  }, [history, undoing, actions]);
+
+  async function deleteAction() {
+    if (!editingAction || editSaving) return;
+    if (!window.confirm(`Supprimer « ${editingAction.action} » de Monday?`)) return;
+    setEditSaving(true);
+    setSync(editingAction.id, "saving");
+    try {
+      const response = await fetch("/api/logistics", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: editingAction.id, expectedUpdatedAt: editingAction.updatedAt }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error);
+      setEditingAction(null);
+      setEditForm(null);
+      await load(true);
+    } catch (err) {
+      setError(err.message);
+      setSync(editingAction.id, "error", err.message);
+      if (err.message.includes("modifiée")) await load(true);
     } finally {
       setEditSaving(false);
     }
@@ -428,6 +561,7 @@ export default function LogisticsView({ canModify }) {
             {canModify && (
               <button type="button" onClick={openCreateEditor} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] hover:bg-[#9995e3]">+ Ajouter une action</button>
             )}
+            <button type="button" onClick={() => setOperationalMode((current) => !current)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${operationalMode ? "bg-[#62956A] text-white" : "border border-[#3a3b42] bg-[#303137] hover:bg-[#404148]"}`}>Mode opérationnel</button>
             <button onClick={() => load()} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm hover:bg-[#404148]">Actualiser</button>
           </div>
         </div>
@@ -453,7 +587,24 @@ export default function LogisticsView({ canModify }) {
 
         {error && <div className="mb-5 rounded-lg border border-[#df2f4a] bg-[#24171a] p-4 text-sm text-[#ff8b9a]">{error}</div>}
 
-        {visible.length === 0 ? (
+        {canModify && history.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3 rounded-lg border border-[#303137] bg-[#1b1c20] px-4 py-3 text-sm">
+            <details>
+              <summary className="cursor-pointer font-semibold">Historique ({history.length}) — {history[0].label}</summary>
+              <div className="mt-2 space-y-1 text-[#c9c9ce]">{history.map((entry) => <div key={entry.id}>{entry.label} <span className="text-[#85858c]">· {entry.createdAt.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" })}</span></div>)}</div>
+            </details>
+            <button type="button" onClick={undoLastChange} disabled={undoing} className="rounded bg-[#303137] px-3 py-1.5 font-semibold hover:bg-[#404148] disabled:opacity-50">{undoing ? "Annulation…" : "Annuler (Ctrl+Z)"}</button>
+          </div>
+        )}
+
+        {operationalMode && (
+          <div className="mb-5 rounded-lg border border-[#62956A] bg-[#1c2a1f] p-4">
+            <div className="font-semibold text-[#9bd2a0]">Mode opérationnel — Mes actions</div>
+            <div className="mt-1 text-sm text-[#c9c9ce]">Vue simplifiée pour téléphone, limitée aux actions qui te sont assignées dans la colonne « Qui ».</div>
+          </div>
+        )}
+
+        {displayedActions.length === 0 ? (
           <div className="rounded-lg border border-[#303137] bg-[#1b1c20] p-6 text-center text-[#a1a1a8]">Aucune action pour ces filtres.</div>
         ) : (
           <div className="w-full rounded-xl border border-[#303137] bg-[#18191d]">
@@ -538,6 +689,7 @@ export default function LogisticsView({ canModify }) {
                               <span className="text-xs font-semibold text-[#b9b6ff]">{action.start.time}</span>
                             </div>
                             <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
+                            {syncStates[action.id] && <div className={`mt-1 text-[11px] font-semibold ${syncStates[action.id].state === "error" ? "text-[#ff8b9a]" : syncStates[action.id].state === "saving" ? "text-[#e0c98b]" : "text-[#9bd2a0]"}`}>{syncStates[action.id].state === "saving" ? "Sauvegarde…" : syncStates[action.id].state === "error" ? "Erreur de synchronisation" : "✓ Synchronisé avec Monday"}</div>}
                             {action.notes && <div className="mt-1 truncate text-xs text-[#e0c98b]" title={action.notes}><span className="text-[#a99562]">Note : </span>{action.notes}</div>}
                             {(action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
                             {(action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
@@ -587,6 +739,7 @@ export default function LogisticsView({ canModify }) {
                           <span className="truncate text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
                         </div>
                         <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
+                        {syncStates[action.id] && <div className={`mt-1 text-[11px] font-semibold ${syncStates[action.id].state === "error" ? "text-[#ff8b9a]" : syncStates[action.id].state === "saving" ? "text-[#e0c98b]" : "text-[#9bd2a0]"}`}>{syncStates[action.id].state === "saving" ? "Sauvegarde…" : syncStates[action.id].state === "error" ? "Erreur de synchronisation" : "✓ Synchronisé avec Monday"}</div>}
                         {action.notes && <div className="mt-1 truncate text-xs text-[#e0c98b]" title={action.notes}><span className="text-[#a99562]">Note : </span>{action.notes}</div>}
                         {duration >= 30 && (action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
                         {duration >= 45 && (action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
@@ -683,6 +836,8 @@ export default function LogisticsView({ canModify }) {
 
             {error && <div className="mt-4 rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">{error}</div>}
             <div className="mt-6 flex justify-end gap-3">
+              {editingAction && <button type="button" onClick={deleteAction} disabled={editSaving} className="mr-auto rounded-lg border border-[#df2f4a] bg-[#24171a] px-4 py-2 text-sm font-semibold text-[#ff8b9a] disabled:opacity-50">Supprimer</button>}
+              {editingAction && <button type="button" onClick={duplicateAction} disabled={editSaving} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm font-semibold disabled:opacity-50">Dupliquer</button>}
               <button type="button" onClick={closeEditor} disabled={editSaving} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm font-semibold disabled:opacity-50">Annuler</button>
               <button type="submit" disabled={editSaving} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] disabled:opacity-50">{editSaving ? "Sauvegarde…" : editingAction ? "Enregistrer dans Monday" : "Ajouter dans Monday"}</button>
             </div>
