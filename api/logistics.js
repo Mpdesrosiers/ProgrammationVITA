@@ -80,6 +80,23 @@ function torontoDateTimeToUtc(date, time) {
   };
 }
 
+function parseColumnOptions(columns = []) {
+  return Object.fromEntries(
+    columns.map((column) => {
+      const settings = column.settings || {};
+      const rawLabels = Array.isArray(settings.labels)
+        ? settings.labels
+        : Object.entries(settings.labels || {}).map(([id, label]) => ({ id, label }));
+      return [
+        column.id,
+        rawLabels
+          .map((option) => option.label ?? option.name ?? "")
+          .filter(Boolean),
+      ];
+    })
+  );
+}
+
 export default async function handler(req, res) {
   const session = requireSession(
     req,
@@ -106,6 +123,14 @@ export default async function handler(req, res) {
       const first = await mondayRequest(`
         query {
           boards(ids: [${BOARD_ID}]) {
+            columns(ids: [
+              "${COLUMNS.responsible}",
+              "${COLUMNS.status}",
+              "${COLUMNS.type}"
+            ]) {
+              id
+              settings
+            }
             items_page(limit: 500) {
               cursor
               items { ${fields} }
@@ -223,6 +248,9 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         actions: enrichedActions,
+        columnOptions: parseColumnOptions(
+          first.data?.boards?.[0]?.columns || []
+        ),
       });
     }
 
