@@ -9,6 +9,7 @@ const COLUMNS = {
   start: "date4",
   end: "date_mm667426",
   responsible: "dropdown_mm668yr",
+  people: "person",
   status: "color_mm6622h",
   departure: "text_mm66xzp4",
   arrival: "text_mm667te8",
@@ -86,12 +87,24 @@ export default async function handler(req, res) {
       const actions = items.map((item) => {
         const column = (id) =>
           item.column_values?.find((value) => value.id === id);
+        let peopleEntities = [];
+        try {
+          peopleEntities =
+            JSON.parse(
+              column(COLUMNS.people)?.value || "{}"
+            ).personsAndTeams || [];
+        } catch {
+          peopleEntities = [];
+        }
+
         return {
           id: item.id,
           action: item.name,
           start: parseDateColumn(column(COLUMNS.start)),
           end: parseDateColumn(column(COLUMNS.end)),
           responsible: column(COLUMNS.responsible)?.text || "",
+          people: column(COLUMNS.people)?.text || "",
+          peopleEntities,
           status: column(COLUMNS.status)?.text || "",
           departure: column(COLUMNS.departure)?.text || "",
           arrival: column(COLUMNS.arrival)?.text || "",
@@ -100,7 +113,64 @@ export default async function handler(req, res) {
         };
       });
 
-      return res.status(200).json({ actions });
+      const personIds = [
+        ...new Set(
+          actions.flatMap((action) =>
+            action.peopleEntities
+              .filter(
+                (entity) =>
+                  entity.kind === "person"
+              )
+              .map((entity) => entity.id)
+          )
+        ),
+      ];
+
+      let emailByPersonId = new Map();
+
+      if (personIds.length) {
+        const usersData = await mondayRequest(`
+          query {
+            users(ids: [${personIds
+              .map(Number)
+              .join(",")}]) {
+              id
+              email
+            }
+          }
+        `);
+
+        emailByPersonId = new Map(
+          (usersData.data?.users || []).map(
+            (user) => [
+              String(user.id),
+              user.email?.toLowerCase(),
+            ]
+          )
+        );
+      }
+
+      const currentEmail =
+        session.email.toLowerCase();
+
+      const enrichedActions = actions.map(
+        (action) => ({
+          ...action,
+          isMine:
+            action.peopleEntities.some(
+              (entity) =>
+                entity.kind === "person" &&
+                emailByPersonId.get(
+                  String(entity.id)
+                ) === currentEmail
+            ),
+          peopleEntities: undefined,
+        })
+      );
+
+      return res.status(200).json({
+        actions: enrichedActions,
+      });
     }
 
     if (req.method === "PUT") {
