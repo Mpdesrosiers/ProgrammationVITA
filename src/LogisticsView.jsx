@@ -25,30 +25,37 @@ function displayDate(value) {
   }).format(new Date(`${value}T12:00:00`));
 }
 
-function actionInterval(action) {
-  const start = new Date(
-    `${action.start.date}T${action.start.time || "00:00"}:00`
-  ).getTime();
-  const parsedEnd = action.end?.date
-    ? new Date(
-        `${action.end.date}T${action.end.time || "00:00"}:00`
-      ).getTime()
-    : NaN;
+function timeToMinutes(time) {
+  const [hours, minutes] = (time || "00:00")
+    .slice(0, 5)
+    .split(":")
+    .map(Number);
+  return hours * 60 + minutes;
+}
+
+function actionInterval(action, selectedDate) {
+  const start = timeToMinutes(action.start.time);
+  let end = action.end?.time
+    ? timeToMinutes(action.end.time)
+    : start + 30;
+
+  if (action.end?.date && action.end.date !== selectedDate) {
+    const startDay = new Date(`${selectedDate}T12:00:00`);
+    const endDay = new Date(`${action.end.date}T12:00:00`);
+    end += Math.round((endDay - startDay) / 86400000) * 1440;
+  }
 
   return {
     start,
-    end:
-      Number.isFinite(parsedEnd) && parsedEnd > start
-        ? parsedEnd
-        : start + 30 * 60 * 1000,
+    end: end > start ? end : start + 30,
   };
 }
 
-function buildOverlapGroups(actions) {
+function buildTimeline(actions, selectedDate) {
   const groups = [];
 
   actions.forEach((action) => {
-    const interval = actionInterval(action);
+    const interval = actionInterval(action, selectedDate);
     let group = groups.at(-1);
 
     if (!group || interval.start >= group.end) {
@@ -67,13 +74,34 @@ function buildOverlapGroups(actions) {
     );
     if (lane === -1) lane = group.laneEnds.length;
     group.laneEnds[lane] = interval.end;
-    group.actions.push({ action, lane });
+    group.actions.push({ action, lane, ...interval });
   });
 
-  return groups.map((group) => ({
-    ...group,
-    laneCount: group.laneEnds.length,
-  }));
+  const laidOut = groups.flatMap((group) =>
+    group.actions.map((entry) => ({
+      ...entry,
+      laneCount: group.laneEnds.length,
+    }))
+  );
+  const earliest = laidOut.length
+    ? Math.min(...laidOut.map((entry) => entry.start))
+    : 8 * 60;
+  const latest = laidOut.length
+    ? Math.max(...laidOut.map((entry) => entry.end))
+    : 18 * 60;
+  const rangeStart = Math.floor(earliest / 60) * 60;
+  const rangeEnd = Math.ceil(latest / 60) * 60;
+
+  return {
+    actions: laidOut,
+    start: rangeStart,
+    end: Math.max(rangeEnd, rangeStart + 60),
+  };
+}
+
+function minutesToTime(minutes) {
+  const normalized = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
 }
 
 export default function LogisticsView({ canModify }) {
@@ -132,9 +160,9 @@ export default function LogisticsView({ canModify }) {
       .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
   }, [actions, selectedDate, search, status, responsible, mineOnly]);
-  const overlapGroups = useMemo(
-    () => buildOverlapGroups(visible),
-    [visible]
+  const timeline = useMemo(
+    () => buildTimeline(visible, selectedDate),
+    [visible, selectedDate]
   );
 
   async function changeStatus(action, newStatus) {
@@ -213,62 +241,91 @@ export default function LogisticsView({ canModify }) {
 
         {error && <div className="mb-5 rounded-lg border border-[#df2f4a] bg-[#24171a] p-4 text-sm text-[#ff8b9a]">{error}</div>}
 
-        <div className="relative ml-4 border-l-2 border-[#3a3b42] md:ml-24">
-          {visible.length === 0 && <div className="ml-8 rounded-lg border border-[#303137] bg-[#1b1c20] p-6 text-center text-[#a1a1a8]">Aucune action pour ces filtres.</div>}
-          {overlapGroups.map((group, groupIndex) => (
-            <section
-              key={`${group.actions[0].action.id}-${groupIndex}`}
-              className="relative mb-4 ml-7 md:ml-12"
+        {visible.length === 0 ? (
+          <div className="rounded-lg border border-[#303137] bg-[#1b1c20] p-6 text-center text-[#a1a1a8]">Aucune action pour ces filtres.</div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[#303137] bg-[#18191d]">
+            <div
+              className="relative min-w-[760px]"
+              style={{ height: (timeline.end - timeline.start) * 1.5 + 1 }}
             >
-              <div className="absolute -left-[37px] top-5 h-4 w-4 rounded-full border-4 border-[#151619] bg-[#8580d9] md:-left-[57px]" />
-              <time className="mb-2 block text-sm font-bold text-[#b9b6ff] md:absolute md:-left-[142px] md:top-4 md:w-20 md:text-right md:text-base">
-                {group.actions[0].action.start.time}
-              </time>
-              {group.laneCount > 1 && (
-                <div className="mb-2 text-xs font-semibold text-[#a9a6e8] md:hidden">
-                  {group.laneCount} actions simultanées
+              {Array.from(
+                { length: Math.floor((timeline.end - timeline.start) / 30) + 1 },
+                (_, index) => timeline.start + index * 30
+              ).map((minute) => (
+                <div
+                  key={minute}
+                  className={"absolute left-0 right-0 border-t " + (minute % 60 === 0 ? "border-[#45464e]" : "border-[#2b2c31]")}
+                  style={{ top: (minute - timeline.start) * 1.5 }}
+                >
+                  {minute % 60 === 0 && (
+                    <time className="absolute left-3 top-0 -translate-y-1/2 rounded bg-[#18191d] px-1 text-xs font-bold text-[#b9b6ff]">
+                      {minutesToTime(minute)}
+                    </time>
+                  )}
                 </div>
-              )}
-              <div
-                className="grid grid-cols-1 items-start gap-3 md:[grid-template-columns:var(--overlap-columns)]"
-                style={{
-                  "--overlap-columns": `repeat(${group.laneCount}, minmax(0, 1fr))`,
-                }}
-              >
-                {group.actions.map(({ action, lane }) => {
-                  const [background, border] = colorFor(action.type);
-                  return (
-                    <article
-                      key={action.id}
-                      className="min-w-0 overflow-hidden rounded-xl border-l-[6px] bg-[#202126] shadow-lg md:[grid-column:var(--overlap-lane)]"
-                      style={{
-                        borderLeftColor: border,
-                        "--overlap-lane": lane + 1,
-                      }}
-                    >
-                      <div className="p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="mb-2 flex flex-wrap gap-2">
-                              <span className="rounded-full px-2.5 py-1 text-[11px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
-                              <span className="rounded-full bg-[#303137] px-2.5 py-1 text-[11px] text-[#c9c9ce]">{action.start.time}{action.end?.time ? `–${action.end.time}` : ""}</span>
-                            </div>
-                            <h3 className="text-base font-semibold md:text-lg">{action.action}</h3>
+              ))}
+
+              <div className="absolute bottom-0 left-[76px] top-0 border-l border-[#3a3b42]" />
+
+              {timeline.actions.map(({ action, lane, laneCount, start, end }) => {
+                const [background, border] = colorFor(action.type);
+                const duration = end - start;
+                const gap = 6;
+                const left = `calc(76px + (100% - 84px) * ${lane} / ${laneCount} + ${gap / 2}px)`;
+                const width = `calc((100% - 84px) / ${laneCount} - ${gap}px)`;
+                return (
+                  <article
+                    key={action.id}
+                    title={`${action.start.time}–${action.end?.time || minutesToTime(end)} · ${action.action}`}
+                    className="absolute min-w-0 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg"
+                    style={{
+                      top: (start - timeline.start) * 1.5 + 2,
+                      height: Math.max(duration * 1.5 - 4, 26),
+                      left,
+                      width,
+                      borderLeftColor: border,
+                    }}
+                  >
+                    <div className="flex h-full min-w-0 items-start gap-2 p-2">
+                      <div className="min-w-0 flex-1">
+                        {duration < 45 ? (
+                          <div className="flex min-w-0 items-center gap-2 pt-0.5">
+                            <span className="shrink-0 text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
+                            <h3 className="truncate text-sm font-semibold">{action.action}</h3>
                           </div>
-                          {canModify ? <select disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="max-w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm font-semibold"><option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option></select> : <span className="rounded-lg bg-[#303137] px-3 py-2 text-sm">{action.status || "Sans statut"}</span>}
-                        </div>
-                        <div className="mt-4 grid gap-3 text-sm">
-                          {(action.departure || action.arrival) && <div><div className="text-xs uppercase text-[#85858c]">Déplacement / lieu</div><div className="mt-1">{action.departure || "—"} <span className="text-[#8580d9]">→</span> {action.arrival || "—"}</div></div>}
-                          {(action.people || action.responsible) && <div><div className="text-xs uppercase text-[#85858c]">Qui</div><div className="mt-1 font-semibold">{action.people || action.responsible}</div>{action.people && action.responsible && <div className="mt-1 text-xs text-[#85858c]">Équipe : {action.responsible}</div>}</div>}
-                        </div>
+                        ) : (
+                          <>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
+                              <span className="truncate text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
+                            </div>
+                            <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
+                          </>
+                        )}
+                        {duration >= 60 && (action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]">{action.people || action.responsible}</div>}
+                        {duration >= 90 && (action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#92929a]">{action.departure || "—"} → {action.arrival || "—"}</div>}
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
+                      {canModify ? (
+                        <select
+                          aria-label={`Statut de ${action.action}`}
+                          disabled={savingId === action.id}
+                          value={action.status}
+                          onChange={(event) => changeStatus(action, event.target.value)}
+                          className="max-w-[105px] shrink-0 rounded border border-[#3a3b42] bg-[#151619] px-1.5 py-1 text-[11px] font-semibold"
+                        >
+                          <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
+                        </select>
+                      ) : duration >= 45 ? (
+                        <span className="max-w-[95px] truncate rounded bg-[#303137] px-2 py-1 text-[11px]">{action.status || "Sans statut"}</span>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="logistics-print-document">
