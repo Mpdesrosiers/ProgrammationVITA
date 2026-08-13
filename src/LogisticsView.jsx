@@ -211,7 +211,7 @@ export default function LogisticsView({ canModify }) {
 
   return (
     <main className="min-h-screen bg-[#151619] px-4 py-6 text-white md:px-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto w-full max-w-[1800px]">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-[#8580d9]">Déroulement opérationnel</div>
@@ -244,10 +244,10 @@ export default function LogisticsView({ canModify }) {
         {visible.length === 0 ? (
           <div className="rounded-lg border border-[#303137] bg-[#1b1c20] p-6 text-center text-[#a1a1a8]">Aucune action pour ces filtres.</div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-[#303137] bg-[#18191d]">
+          <div className="w-full rounded-xl border border-[#303137] bg-[#18191d]">
             <div
-              className="relative min-w-[760px]"
-              style={{ height: (timeline.end - timeline.start) * 1.5 + 1 }}
+              className="relative w-full"
+              style={{ height: timeline.end - timeline.start + 1 }}
             >
               {Array.from(
                 { length: Math.floor((timeline.end - timeline.start) / 30) + 1 },
@@ -256,7 +256,7 @@ export default function LogisticsView({ canModify }) {
                 <div
                   key={minute}
                   className={"absolute left-0 right-0 border-t " + (minute % 60 === 0 ? "border-[#45464e]" : "border-[#2b2c31]")}
-                  style={{ top: (minute - timeline.start) * 1.5 }}
+                  style={{ top: minute - timeline.start }}
                 >
                   {minute % 60 === 0 && (
                     <time className="absolute left-3 top-0 -translate-y-1/2 rounded bg-[#18191d] px-1 text-xs font-bold text-[#b9b6ff]">
@@ -280,8 +280,8 @@ export default function LogisticsView({ canModify }) {
                     title={`${action.start.time}–${action.end?.time || minutesToTime(end)} · ${action.action}`}
                     className="absolute min-w-0 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg"
                     style={{
-                      top: (start - timeline.start) * 1.5 + 2,
-                      height: Math.max(duration * 1.5 - 4, 26),
+                      top: start - timeline.start + 2,
+                      height: Math.max(duration - 4, 26),
                       left,
                       width,
                       borderLeftColor: border,
