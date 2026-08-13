@@ -259,6 +259,11 @@ p {
     font-size: 5pt;
   }
 
+  .logistics-print-block > .logistics-print-note {
+    color: #725a18;
+    font-weight: 700;
+  }
+
   /* Deux déroulements compacts par page lorsque tous les jours sont imprimés. */
   .logistics-print-document.is-all-days .logistics-print-day {
     height: 96mm;
