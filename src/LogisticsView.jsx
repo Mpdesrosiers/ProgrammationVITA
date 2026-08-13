@@ -10,6 +10,11 @@ const typeColors = [
 ];
 
 const TIMELINE_PIXELS_PER_MINUTE = 3;
+const LOGISTICS_COLUMNS = {
+  responsible: "dropdown_mm668yr",
+  status: "color_mm6622h",
+  type: "color_mm66qgbk",
+};
 
 function colorFor(value) {
   const hash = [...(value || "Autre")].reduce(
@@ -142,6 +147,7 @@ function minutesToTime(minutes) {
 
 export default function LogisticsView({ canModify }) {
   const [actions, setActions] = useState([]);
+  const [columnOptions, setColumnOptions] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -165,6 +171,7 @@ export default function LogisticsView({ canModify }) {
       }
       const valid = (data.actions || []).filter((action) => action.start?.date);
       setActions(valid);
+      setColumnOptions(data.columnOptions || {});
       const dates = [...new Set(valid.map((action) => action.start.date))].sort();
       setSelectedDate((current) => current || dates[0] || "");
       setError("");
@@ -189,10 +196,9 @@ export default function LogisticsView({ canModify }) {
     () => [...new Set(actions.flatMap((action) => (action.people || action.responsible).split(",").map((name) => name.trim())).filter(Boolean))].sort(),
     [actions]
   );
-  const types = useMemo(
-    () => [...new Set(actions.map((action) => action.type).filter(Boolean))].sort(),
-    [actions]
-  );
+  const responsibleOptions = columnOptions[LOGISTICS_COLUMNS.responsible] || [];
+  const statusOptions = columnOptions[LOGISTICS_COLUMNS.status] || [];
+  const typeOptions = columnOptions[LOGISTICS_COLUMNS.type] || [];
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return actions
@@ -339,7 +345,7 @@ export default function LogisticsView({ canModify }) {
         <div className="mb-7 grid gap-3 rounded-xl border border-[#303137] bg-[#1b1c20] p-4 md:grid-cols-[1fr_190px_190px_auto]">
           <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une action, un lieu…" className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm outline-none focus:border-[#8580d9]" />
           <select value={responsible} onChange={(event) => setResponsible(event.target.value)} className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm"><option value="">Tous les responsables</option>{responsibles.map((name) => <option key={name}>{name}</option>)}</select>
-          <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm"><option value="">Tous les statuts</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option></select>
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm"><option value="">Tous les statuts</option>{statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select>
           <button type="button" onClick={() => setMineOnly((current) => !current)} className={"rounded-lg px-4 py-2.5 text-sm font-semibold " + (mineOnly ? "bg-[#8580d9] text-[#151619]" : "border border-[#3a3b42] bg-[#303137] text-white hover:bg-[#404148]")}>Mes tâches</button>
         </div>
 
@@ -442,7 +448,7 @@ export default function LogisticsView({ canModify }) {
                           </div>
                           {canModify ? (
                             <select aria-label={`Statut de ${action.action}`} onClick={(event) => event.stopPropagation()} disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="max-w-[105px] shrink-0 rounded border border-[#3a3b42] bg-[#151619] px-1.5 py-1 text-[11px] font-semibold">
-                              <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
+                              <option value="">Sans statut</option>{statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                             </select>
                           ) : (
                             <span className="max-w-[95px] truncate rounded bg-[#303137] px-2 py-1 text-[11px]">{action.status || "Sans statut"}</span>
@@ -498,7 +504,7 @@ export default function LogisticsView({ canModify }) {
                           onChange={(event) => changeStatus(action, event.target.value)}
                           className="max-w-[105px] shrink-0 rounded border border-[#3a3b42] bg-[#151619] px-1.5 py-1 text-[11px] font-semibold"
                         >
-                          <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
+                          <option value="">Sans statut</option>{statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                         </select>
                       ) : duration >= 30 ? (
                         <span className="max-w-[95px] truncate rounded bg-[#303137] px-2 py-1 text-[11px]">{action.status || "Sans statut"}</span>
@@ -545,16 +551,25 @@ export default function LogisticsView({ canModify }) {
                 <input type="time" step="60" value={editForm.endTime} onChange={(event) => setEditForm((current) => ({ ...current, endTime: event.target.value, endDate: event.target.value ? current.endDate || current.startDate : "" }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
                 <span className="mt-1 block text-xs text-[#85858c]">Laisse vide pour afficher un jalon.</span>
               </label>
-              <label className="text-sm">Responsable(s)
-                <input list="logistics-responsibles" value={editForm.responsible} onChange={(event) => setEditForm((current) => ({ ...current, responsible: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
-              </label>
+              <div className="text-sm">Responsable(s)
+                <details className="relative mt-1 rounded-lg border border-[#3a3b42] bg-[#151619]">
+                  <summary className="cursor-pointer list-none px-3 py-2.5">{editForm.responsible || "Aucun responsable"}</summary>
+                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#3a3b42] bg-[#202126] p-2 shadow-xl">
+                    {responsibleOptions.map((option) => {
+                      const selected = editForm.responsible.split(",").map((label) => label.trim()).filter(Boolean);
+                      return <label key={option} className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 hover:bg-[#303137]"><input type="checkbox" checked={selected.includes(option)} onChange={(event) => setEditForm((current) => { const currentLabels = current.responsible.split(",").map((label) => label.trim()).filter(Boolean); const next = event.target.checked ? [...new Set([...currentLabels, option])] : currentLabels.filter((label) => label !== option); return { ...current, responsible: next.join(", ") }; })} />{option}</label>;
+                    })}
+                    {responsibleOptions.length === 0 && <div className="px-2 py-1 text-[#85858c]">Aucune option configurée dans Monday.</div>}
+                  </div>
+                </details>
+              </div>
               <label className="text-sm">Statut
                 <select value={editForm.status} onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5">
-                  <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
+                  <option value="">Sans statut</option>{statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               </label>
               <label className="text-sm">Type
-                <input list="logistics-types" value={editForm.type} onChange={(event) => setEditForm((current) => ({ ...current, type: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+                <select value={editForm.type} onChange={(event) => setEditForm((current) => ({ ...current, type: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5"><option value="">Sans type</option>{typeOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select>
               </label>
               <label className="text-sm">Personne(s) assignée(s) dans Monday
                 <input readOnly value={editingAction.people || "Aucune"} className="mt-1 w-full rounded-lg border border-[#303137] bg-[#202126] px-3 py-2.5 text-[#a1a1a8]" />
@@ -569,9 +584,6 @@ export default function LogisticsView({ canModify }) {
                 <textarea rows="4" value={editForm.notes} onChange={(event) => setEditForm((current) => ({ ...current, notes: event.target.value }))} className="mt-1 w-full resize-y rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
               </label>
             </div>
-
-            <datalist id="logistics-responsibles">{responsibles.map((name) => <option key={name} value={name} />)}</datalist>
-            <datalist id="logistics-types">{types.map((name) => <option key={name} value={name} />)}</datalist>
 
             {error && <div className="mt-4 rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">{error}</div>}
             <div className="mt-6 flex justify-end gap-3">
