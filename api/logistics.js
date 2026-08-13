@@ -191,42 +191,31 @@ export default async function handler(req, res) {
         };
       });
 
-      const personIds = [
-        ...new Set(
-          actions.flatMap((action) =>
-            action.peopleEntities
-              .filter(
-                (entity) =>
-                  entity.kind === "person"
-              )
-              .map((entity) => entity.id)
-          )
-        ),
-      ];
-
-      let emailByPersonId = new Map();
-
-      if (personIds.length) {
-        const usersData = await mondayRequest(`
-          query {
-            users(ids: [${personIds
-              .map(Number)
-              .join(",")}]) {
-              id
-              email
-            }
+      const usersData = await mondayRequest(`
+        query {
+          users {
+            id
+            name
+            email
+            enabled
           }
-        `);
-
-        emailByPersonId = new Map(
-          (usersData.data?.users || []).map(
-            (user) => [
-              String(user.id),
-              user.email?.toLowerCase(),
-            ]
-          )
-        );
-      }
+        }
+      `);
+      const mondayUsersWithEmail = (usersData.data?.users || [])
+        .filter((user) => user.enabled !== false)
+        .map((user) => ({
+          id: String(user.id),
+          name: user.name || user.email,
+          email: user.email || "",
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+      const emailByPersonId = new Map(
+        mondayUsersWithEmail.map((user) => [user.id, user.email.toLowerCase()])
+      );
+      const mondayUsers = mondayUsersWithEmail.map(({ id, name }) => ({
+        id,
+        name,
+      }));
 
       const currentEmail =
         session.email.toLowerCase();
@@ -242,7 +231,7 @@ export default async function handler(req, res) {
                   String(entity.id)
                 ) === currentEmail
             ),
-          peopleEntities: undefined,
+          peopleEntities: action.peopleEntities,
         })
       );
 
@@ -251,6 +240,7 @@ export default async function handler(req, res) {
         columnOptions: parseColumnOptions(
           first.data?.boards?.[0]?.columns || []
         ),
+        mondayUsers,
       });
     }
 
@@ -267,6 +257,7 @@ export default async function handler(req, res) {
         arrival,
         type,
         notes,
+        peopleEntities,
       } = req.body || {};
       if (!action?.trim() || !startDate || !startTime) {
         return res.status(400).json({
@@ -290,6 +281,14 @@ export default async function handler(req, res) {
       }
       if (status) values[COLUMNS.status] = { label: status };
       if (type) values[COLUMNS.type] = { label: type };
+      if (Array.isArray(peopleEntities) && peopleEntities.length) {
+        values[COLUMNS.people] = {
+          personsAndTeams: peopleEntities.map((entity) => ({
+            id: Number(entity.id),
+            kind: entity.kind || "person",
+          })),
+        };
+      }
 
       const created = await mondayRequest(`
         mutation {
@@ -320,6 +319,7 @@ export default async function handler(req, res) {
         arrival,
         type,
         notes,
+        peopleEntities,
         expectedUpdatedAt,
       } = req.body || {};
       if (!itemId) {
@@ -356,6 +356,16 @@ export default async function handler(req, res) {
       if (arrival !== undefined) values[COLUMNS.arrival] = arrival;
       if (type !== undefined) values[COLUMNS.type] = type ? { label: type } : null;
       if (notes !== undefined) values[COLUMNS.notes] = notes;
+      if (peopleEntities !== undefined) {
+        values[COLUMNS.people] = {
+          personsAndTeams: Array.isArray(peopleEntities)
+            ? peopleEntities.map((entity) => ({
+                id: Number(entity.id),
+                kind: entity.kind || "person",
+              }))
+            : [],
+        };
+      }
       if (startDate !== undefined || startTime !== undefined) {
         if (!startDate || !startTime) {
           return res.status(400).json({ error: "La date et l'heure de début sont requises." });
