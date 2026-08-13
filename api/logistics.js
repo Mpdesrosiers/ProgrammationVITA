@@ -20,12 +20,32 @@ function parseDateColumn(column) {
   if (!column?.value) return null;
   try {
     const value = JSON.parse(column.value);
-    return value.date
-      ? {
-          date: value.date,
-          time: (value.time || "00:00:00").slice(0, 5),
-        }
-      : null;
+    if (!value.date) return null;
+
+    /*
+     * Les colonnes Date + heure de Monday sont reçues en UTC.
+     * La logistique doit afficher l'heure locale de Montréal,
+     * y compris lors des changements d'heure saisonniers.
+     */
+    const utcDate = new Date(
+      `${value.date}T${value.time || "00:00:00"}Z`
+    );
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Toronto",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(utcDate);
+    const getPart = (type) =>
+      parts.find((part) => part.type === type)?.value;
+
+    return {
+      date: `${getPart("year")}-${getPart("month")}-${getPart("day")}`,
+      time: `${getPart("hour")}:${getPart("minute")}`,
+    };
   } catch {
     return null;
   }
