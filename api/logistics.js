@@ -35,7 +35,10 @@ export default async function handler(req, res) {
   const session = requireSession(
     req,
     res,
-    req.method !== "GET"
+    {
+      area: "logistics",
+      write: req.method !== "GET",
+    }
   );
   if (!session) return;
 

@@ -319,7 +319,8 @@ function App() {
     useState({
       name: "",
       email: "",
-      role: "Consultation",
+      programmingRole: "Consultation",
+      logisticsRole: "Consultation",
     });
 
   const [accessError, setAccessError] =
@@ -616,7 +617,22 @@ function App() {
 
         if (response.ok && data.user) {
           setUser(data.user);
-          await loadActivities();
+          const canViewProgramming =
+            data.user.programmingRole &&
+            data.user.programmingRole !== "Aucun accès";
+          const canViewLogistics =
+            data.user.logisticsRole &&
+            data.user.logisticsRole !== "Aucun accès";
+
+          if (canViewProgramming) {
+            setActiveView("programming");
+            await loadActivities();
+          } else if (canViewLogistics) {
+            setActiveView("logistics");
+            setLoading(false);
+          } else {
+            setLoading(false);
+          }
         } else {
           setLoading(false);
         }
@@ -633,8 +649,19 @@ function App() {
     loadSession();
   }, []);
 
-  const canModify =
-    user?.role === "Modification";
+  const canModifyProgramming =
+    user?.programmingRole === "Modification";
+  const canModifyLogistics =
+    user?.logisticsRole === "Modification";
+  const canManageAccess =
+    canModifyProgramming || canModifyLogistics;
+  const canViewProgramming =
+    Boolean(user?.programmingRole) &&
+    user.programmingRole !== "Aucun accès";
+  const canViewLogistics =
+    Boolean(user?.logisticsRole) &&
+    user.logisticsRole !== "Aucun accès";
+  const canModify = canModifyProgramming;
 
   /*
    * Synchronisation collaborative silencieuse.
@@ -2023,7 +2050,8 @@ function App() {
       setAccessForm({
         name: "",
         email: "",
-        role: "Consultation",
+        programmingRole: "Consultation",
+        logisticsRole: "Consultation",
       });
       await loadAccessUsers();
     } catch (error) {
@@ -2049,7 +2077,12 @@ function App() {
           },
           body: JSON.stringify({
             itemId: accessUser.id,
-            role: changes.role ?? accessUser.role,
+            programmingRole:
+              changes.programmingRole ??
+              accessUser.programmingRole,
+            logisticsRole:
+              changes.logisticsRole ??
+              accessUser.logisticsRole,
             active: changes.active ?? accessUser.active,
           }),
         }
@@ -2289,6 +2322,7 @@ function App() {
               </h1>
 
               <div className="mt-3 flex gap-2">
+                {canViewProgramming && (
                 <button
                   type="button"
                   onClick={() => setActiveView("programming")}
@@ -2296,6 +2330,8 @@ function App() {
                 >
                   Programmation
                 </button>
+                )}
+                {canViewLogistics && (
                 <button
                   type="button"
                   onClick={() => setActiveView("logistics")}
@@ -2303,6 +2339,7 @@ function App() {
                 >
                   Logistique
                 </button>
+                )}
               </div>
 
             </div>
@@ -2311,8 +2348,7 @@ function App() {
 
               {/* BOUTON AJOUTER */}
 
-              {canModify && activeView === "programming" && (
-                <>
+              {canManageAccess && (
                   <button
                     type="button"
                     onClick={openAccessManager}
@@ -2320,6 +2356,8 @@ function App() {
                   >
                     Gérer les accès
                   </button>
+              )}
+              {canModifyProgramming && activeView === "programming" && (
                   <button
                     type="button"
                     onClick={() =>
@@ -2329,7 +2367,6 @@ function App() {
                   >
                     + Ajouter une activité
                   </button>
-                </>
               )}
 
               {activeView === "programming" && (
@@ -2368,7 +2405,9 @@ function App() {
                   {user.name}
                 </div>
                 <div className="text-[11px] text-[#a1a1a8]">
-                  {user.role}
+                  Prog. : {user.programmingRole}
+                  {" · Log. : "}
+                  {user.logisticsRole}
                   {" · "}
                   <a
                     href="/api/auth/logout"
@@ -2982,7 +3021,7 @@ function App() {
 
       {activeView === "logistics" && (
         <LogisticsView
-          canModify={canModify}
+          canModify={canModifyLogistics}
         />
       )}
 
@@ -3168,7 +3207,7 @@ function App() {
         </div>
       )}
 
-      {managingAccess && canModify && (
+      {managingAccess && canManageAccess && (
         <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
@@ -3189,7 +3228,7 @@ function App() {
               </button>
             </div>
 
-            <div className="mb-5 grid grid-cols-1 gap-2 rounded-lg border border-[#303137] bg-[#151619] p-3 md:grid-cols-[1fr_1.4fr_160px_auto]">
+            <div className="mb-5 grid grid-cols-1 gap-2 rounded-lg border border-[#303137] bg-[#151619] p-3 md:grid-cols-[1fr_1.4fr_140px_140px_auto]">
               <input
                 value={accessForm.name}
                 onChange={(event) => setAccessForm((current) => ({ ...current, name: event.target.value }))}
@@ -3204,10 +3243,24 @@ function App() {
                 className="rounded border border-[#3a3b42] bg-[#202126] px-3 py-2 text-sm"
               />
               <select
-                value={accessForm.role}
-                onChange={(event) => setAccessForm((current) => ({ ...current, role: event.target.value }))}
+                aria-label="Accès programmation"
+                title="Accès programmation"
+                value={accessForm.programmingRole}
+                onChange={(event) => setAccessForm((current) => ({ ...current, programmingRole: event.target.value }))}
                 className="rounded border border-[#3a3b42] bg-[#202126] px-3 py-2 text-sm"
               >
+                <option>Aucun accès</option>
+                <option>Consultation</option>
+                <option>Modification</option>
+              </select>
+              <select
+                aria-label="Accès logistique"
+                title="Accès logistique"
+                value={accessForm.logisticsRole}
+                onChange={(event) => setAccessForm((current) => ({ ...current, logisticsRole: event.target.value }))}
+                className="rounded border border-[#3a3b42] bg-[#202126] px-3 py-2 text-sm"
+              >
+                <option>Aucun accès</option>
                 <option>Consultation</option>
                 <option>Modification</option>
               </select>
@@ -3229,15 +3282,30 @@ function App() {
 
             <div className="space-y-2">
               {accessUsers.map((accessUser) => (
-                <div key={accessUser.id} className="grid grid-cols-[1fr_1.4fr_160px_110px] items-center gap-2 rounded-lg border border-[#303137] p-3 text-sm">
+                <div key={accessUser.id} className="grid grid-cols-[1fr_1.4fr_140px_140px_110px] items-center gap-2 rounded-lg border border-[#303137] p-3 text-sm">
                   <div className="font-semibold">{accessUser.name}</div>
                   <div className="truncate text-[#a1a1a8]">{accessUser.email}</div>
                   <select
-                    value={accessUser.role}
+                    aria-label={`Accès programmation de ${accessUser.name}`}
+                    title="Accès programmation"
+                    value={accessUser.programmingRole}
                     disabled={accessSaving}
-                    onChange={(event) => updateAccessUser(accessUser, { role: event.target.value })}
+                    onChange={(event) => updateAccessUser(accessUser, { programmingRole: event.target.value })}
                     className="rounded border border-[#3a3b42] bg-[#151619] px-2 py-1.5"
                   >
+                    <option>Aucun accès</option>
+                    <option>Consultation</option>
+                    <option>Modification</option>
+                  </select>
+                  <select
+                    aria-label={`Accès logistique de ${accessUser.name}`}
+                    title="Accès logistique"
+                    value={accessUser.logisticsRole}
+                    disabled={accessSaving}
+                    onChange={(event) => updateAccessUser(accessUser, { logisticsRole: event.target.value })}
+                    className="rounded border border-[#3a3b42] bg-[#151619] px-2 py-1.5"
+                  >
+                    <option>Aucun accès</option>
                     <option>Consultation</option>
                     <option>Modification</option>
                   </select>

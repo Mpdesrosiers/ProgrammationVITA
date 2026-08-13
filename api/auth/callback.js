@@ -47,17 +47,35 @@ export default async function handler(req, res) {
     if (!isAdmin && (!access || access.active !== "Oui")) {
       throw new Error("Votre compte n'est pas autorisé dans Monday.");
     }
-    const role = isAdmin
+    const programmingRole = isAdmin
       ? "Modification"
-      : access.role;
-    if (!["Modification", "Consultation"].includes(role)) {
-      throw new Error("Le rôle Monday n'est pas valide.");
+      : access.programmingRole;
+    const logisticsRole = isAdmin
+      ? "Modification"
+      : access.logisticsRole;
+    const validRoles = [
+      "Modification",
+      "Consultation",
+      "Aucun accès",
+    ];
+    if (
+      !validRoles.includes(programmingRole) ||
+      !validRoles.includes(logisticsRole)
+    ) {
+      throw new Error("Un des rôles Monday n'est pas valide.");
+    }
+    if (
+      programmingRole === "Aucun accès" &&
+      logisticsRole === "Aucun accès"
+    ) {
+      throw new Error("Votre compte n'a accès à aucune section.");
     }
     clearOAuthState(res);
     setSession(res, {
       email,
       name: profile.name || access?.name || email,
-      role,
+      programmingRole,
+      logisticsRole,
     });
     res.redirect(process.env.APP_URL);
   } catch (error) {

@@ -4,13 +4,17 @@ import {
 } from "./auth/_shared.js";
 
 export default async function handler(req, res) {
-  const session = requireSession(req, res, true);
+  const session = requireSession(req, res, {
+    area: "access",
+    write: true,
+  });
   if (!session) return;
 
   try {
     const board = Number(process.env.AUTH_ACCESS_BOARD_ID);
     const emailColumn = process.env.AUTH_EMAIL_COLUMN_ID;
     const roleColumn = process.env.AUTH_ROLE_COLUMN_ID;
+    const logisticsRoleColumn = "color_mm66f4ct";
     const activeColumn = process.env.AUTH_ACTIVE_COLUMN_ID;
 
     if (req.method === "GET") {
@@ -24,6 +28,7 @@ export default async function handler(req, res) {
                 column_values(ids: [
                   "${emailColumn}",
                   "${roleColumn}",
+                  "${logisticsRoleColumn}",
                   "${activeColumn}"
                 ]) { id text }
               }
@@ -39,7 +44,8 @@ export default async function handler(req, res) {
             id: item.id,
             name: item.name,
             email: get(emailColumn),
-            role: get(roleColumn),
+            programmingRole: get(roleColumn),
+            logisticsRole: get(logisticsRoleColumn),
             active: get(activeColumn),
           };
         }) || [];
@@ -47,7 +53,13 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "POST") {
-      const { name, email, role, active = "Oui" } = req.body || {};
+      const {
+        name,
+        email,
+        programmingRole,
+        logisticsRole,
+        active = "Oui",
+      } = req.body || {};
       if (!name?.trim() || !email?.trim()) {
         return res.status(400).json({ error: "Nom et courriel requis." });
       }
@@ -56,7 +68,12 @@ export default async function handler(req, res) {
       }
       const values = {
         [emailColumn]: email.trim().toLowerCase(),
-        [roleColumn]: { label: role },
+        [roleColumn]: {
+          label: programmingRole,
+        },
+        [logisticsRoleColumn]: {
+          label: logisticsRole,
+        },
         [activeColumn]: { label: active },
       };
       await mondayRequest(`
@@ -72,9 +89,19 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "PUT") {
-      const { itemId, role, active } = req.body || {};
+      const {
+        itemId,
+        programmingRole,
+        logisticsRole,
+        active,
+      } = req.body || {};
       const values = {
-        [roleColumn]: { label: role },
+        [roleColumn]: {
+          label: programmingRole,
+        },
+        [logisticsRoleColumn]: {
+          label: logisticsRole,
+        },
         [activeColumn]: { label: active },
       };
       await mondayRequest(`

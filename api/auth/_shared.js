@@ -139,13 +139,45 @@ export function getSession(req) {
   return session;
 }
 
-export function requireSession(req, res, write = false) {
+export function requireSession(
+  req,
+  res,
+  options = {}
+) {
   const session = getSession(req);
   if (!session) {
     res.status(401).json({ error: "Connexion requise." });
     return null;
   }
-  if (write && session.role !== "Modification") {
+  const normalized =
+    typeof options === "boolean"
+      ? {
+          area: "programming",
+          write: options,
+        }
+      : options;
+  const area =
+    normalized.area || "programming";
+  const role =
+    area === "access"
+      ? (
+          session.programmingRole === "Modification" ||
+          session.logisticsRole === "Modification"
+            ? "Modification"
+            : "Aucun accès"
+        )
+      : area === "logistics"
+      ? session.logisticsRole
+      : session.programmingRole;
+
+  if (!role || role === "Aucun accès") {
+    res.status(403).json({
+      error: `Vous n'avez pas accès à la section ${area === "logistics" ? "Logistique" : "Programmation"}.`,
+    });
+    return null;
+  }
+
+  if (normalized.write && role !== "Modification") {
     res.status(403).json({
       error: "Votre accès est en mode consultation.",
     });
@@ -177,6 +209,7 @@ export async function findAccess(email) {
   const boardId = Number(process.env.AUTH_ACCESS_BOARD_ID);
   const emailColumn = process.env.AUTH_EMAIL_COLUMN_ID;
   const roleColumn = process.env.AUTH_ROLE_COLUMN_ID;
+  const logisticsRoleColumn = "color_mm66f4ct";
   const activeColumn = process.env.AUTH_ACTIVE_COLUMN_ID;
   const data = await mondayRequest(`
     query {
@@ -188,6 +221,7 @@ export async function findAccess(email) {
             column_values(ids: [
               "${emailColumn}",
               "${roleColumn}",
+              "${logisticsRoleColumn}",
               "${activeColumn}"
             ]) { id text }
           }
@@ -209,7 +243,8 @@ export async function findAccess(email) {
     itemId: item.id,
     name: item.name,
     email: normalized,
-    role: get(roleColumn),
+    programmingRole: get(roleColumn),
+    logisticsRole: get(logisticsRoleColumn),
     active: get(activeColumn),
   };
 }
