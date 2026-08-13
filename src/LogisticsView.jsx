@@ -9,6 +9,8 @@ const typeColors = [
   ["#8EACD2", "#6084B4"],
 ];
 
+const TIMELINE_PIXELS_PER_MINUTE = 3;
+
 function colorFor(value) {
   const hash = [...(value || "Autre")].reduce(
     (total, character) => total + character.charCodeAt(0),
@@ -247,7 +249,12 @@ export default function LogisticsView({ canModify }) {
           <div className="w-full rounded-xl border border-[#303137] bg-[#18191d]">
             <div
               className="relative w-full"
-              style={{ height: timeline.end - timeline.start + 1 }}
+              style={{
+                height:
+                  (timeline.end - timeline.start) *
+                    TIMELINE_PIXELS_PER_MINUTE +
+                  1,
+              }}
             >
               {Array.from(
                 { length: Math.floor((timeline.end - timeline.start) / 30) + 1 },
@@ -256,7 +263,11 @@ export default function LogisticsView({ canModify }) {
                 <div
                   key={minute}
                   className={"absolute left-0 right-0 border-t " + (minute % 60 === 0 ? "border-[#45464e]" : "border-[#2b2c31]")}
-                  style={{ top: minute - timeline.start }}
+                  style={{
+                    top:
+                      (minute - timeline.start) *
+                      TIMELINE_PIXELS_PER_MINUTE,
+                  }}
                 >
                   {minute % 60 === 0 && (
                     <time className="absolute left-3 top-0 -translate-y-1/2 rounded bg-[#18191d] px-1 text-xs font-bold text-[#b9b6ff]">
@@ -280,8 +291,14 @@ export default function LogisticsView({ canModify }) {
                     title={`${action.start.time}–${action.end?.time || minutesToTime(end)} · ${action.action}`}
                     className="absolute min-w-0 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg"
                     style={{
-                      top: start - timeline.start + 2,
-                      height: Math.max(duration - 4, 26),
+                      top:
+                        (start - timeline.start) *
+                          TIMELINE_PIXELS_PER_MINUTE +
+                        2,
+                      height: Math.max(
+                        duration * TIMELINE_PIXELS_PER_MINUTE - 4,
+                        42
+                      ),
                       left,
                       width,
                       borderLeftColor: border,
@@ -289,22 +306,13 @@ export default function LogisticsView({ canModify }) {
                   >
                     <div className="flex h-full min-w-0 items-start gap-2 p-2">
                       <div className="min-w-0 flex-1">
-                        {duration < 45 ? (
-                          <div className="flex min-w-0 items-center gap-2 pt-0.5">
-                            <span className="shrink-0 text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
-                            <h3 className="truncate text-sm font-semibold">{action.action}</h3>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
-                              <span className="truncate text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
-                            </div>
-                            <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
-                          </>
-                        )}
-                        {duration >= 60 && (action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]">{action.people || action.responsible}</div>}
-                        {duration >= 90 && (action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#92929a]">{action.departure || "—"} → {action.arrival || "—"}</div>}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
+                          <span className="truncate text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
+                        </div>
+                        <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
+                        {duration >= 30 && (action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
+                        {duration >= 45 && (action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
                       </div>
                       {canModify ? (
                         <select
@@ -316,7 +324,7 @@ export default function LogisticsView({ canModify }) {
                         >
                           <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
                         </select>
-                      ) : duration >= 45 ? (
+                      ) : duration >= 30 ? (
                         <span className="max-w-[95px] truncate rounded bg-[#303137] px-2 py-1 text-[11px]">{action.status || "Sans statut"}</span>
                       ) : null}
                     </div>
