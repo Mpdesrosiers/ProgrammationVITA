@@ -148,6 +148,7 @@ function minutesToTime(minutes) {
 export default function LogisticsView({ canModify }) {
   const [actions, setActions] = useState([]);
   const [columnOptions, setColumnOptions] = useState({});
+  const [mondayUsers, setMondayUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -176,6 +177,7 @@ export default function LogisticsView({ canModify }) {
       const valid = (data.actions || []).filter((action) => action.start?.date);
       setActions(valid);
       setColumnOptions(data.columnOptions || {});
+      setMondayUsers(data.mondayUsers || []);
       const dates = [...new Set(valid.map((action) => action.start.date))].sort();
       setSelectedDate((current) => current || dates[0] || "");
       setError("");
@@ -284,6 +286,7 @@ export default function LogisticsView({ canModify }) {
       arrival: action.arrival || "",
       type: action.type || "",
       notes: action.notes || "",
+      peopleEntities: action.peopleEntities || [],
     });
   }
 
@@ -302,6 +305,7 @@ export default function LogisticsView({ canModify }) {
       arrival: "",
       type: "",
       notes: "",
+      peopleEntities: [],
     });
   }
 
@@ -374,6 +378,7 @@ export default function LogisticsView({ canModify }) {
       arrival: action.arrival || "",
       type: action.type || "",
       notes: action.notes || "",
+      peopleEntities: action.peopleEntities || [],
     };
   }
 
@@ -820,9 +825,18 @@ export default function LogisticsView({ canModify }) {
               <label className="text-sm">Type
                 <select value={editForm.type} onChange={(event) => setEditForm((current) => ({ ...current, type: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5"><option value="">Sans type</option>{typeOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select>
               </label>
-              {editingAction && <label className="text-sm">Personne(s) assignée(s) dans Monday
-                <input readOnly value={editingAction.people || "Aucune"} className="mt-1 w-full rounded-lg border border-[#303137] bg-[#202126] px-3 py-2.5 text-[#a1a1a8]" />
-              </label>}
+              <div className="text-sm">Qui — personne(s) assignée(s)
+                <details className="relative mt-1 rounded-lg border border-[#3a3b42] bg-[#151619]">
+                  <summary className="cursor-pointer list-none px-3 py-2.5">{editForm.peopleEntities.length ? editForm.peopleEntities.map((entity) => mondayUsers.find((user) => user.id === String(entity.id))?.name).filter(Boolean).join(", ") : "Aucune personne"}</summary>
+                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[#3a3b42] bg-[#202126] p-2 shadow-xl">
+                    {mondayUsers.map((user) => {
+                      const selected = editForm.peopleEntities.some((entity) => String(entity.id) === user.id && entity.kind === "person");
+                      return <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 hover:bg-[#303137]"><input type="checkbox" checked={selected} onChange={(event) => setEditForm((current) => ({ ...current, peopleEntities: event.target.checked ? [...current.peopleEntities.filter((entity) => String(entity.id) !== user.id), { id: user.id, kind: "person" }] : current.peopleEntities.filter((entity) => String(entity.id) !== user.id) }))} /><span>{user.name}</span></label>;
+                    })}
+                    {mondayUsers.length === 0 && <div className="px-2 py-1 text-[#85858c]">Aucun compte Monday accessible.</div>}
+                  </div>
+                </details>
+              </div>
               <label className="text-sm">Départ
                 <input value={editForm.departure} onChange={(event) => setEditForm((current) => ({ ...current, departure: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
               </label>
