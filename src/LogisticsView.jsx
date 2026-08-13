@@ -319,7 +319,7 @@ export default function LogisticsView({ canModify }) {
     });
   }
 
-  function exportCsv() {
+  function exportCsv(scope) {
     const escapeCsv = (value) =>
       `"${String(value ?? "").replaceAll('"', '""')}"`;
     const headers = [
@@ -338,7 +338,20 @@ export default function LogisticsView({ canModify }) {
       "Arrivée",
       "Notes",
     ];
-    const rows = visible.map((action) => [
+    const query = search.trim().toLowerCase();
+    const exportedActions = (scope === "all" ? actions : actions.filter(
+      (action) => action.start?.date === selectedDate
+    ))
+      .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible} ${action.notes}`.toLowerCase().includes(query))
+      .filter((action) => !status || action.status === status)
+      .filter((action) => !responsible || (action.people || action.responsible).split(",").map((name) => name.trim()).includes(responsible))
+      .filter((action) => !mineOnly || action.isMine)
+      .sort((a, b) =>
+        `${a.start?.date}-${a.start?.time}-${a.action}`.localeCompare(
+          `${b.start?.date}-${b.start?.time}-${b.action}`
+        )
+      );
+    const rows = exportedActions.map((action) => [
       action.id,
       action.start?.date,
       action.start?.time,
@@ -366,7 +379,9 @@ export default function LogisticsView({ canModify }) {
       ? `-${responsible.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`
       : "";
     link.href = url;
-    link.download = `logistique-${selectedDate || "export"}${suffix}.csv`;
+    link.download = scope === "all"
+      ? `logistique-complete${suffix}.csv`
+      : `logistique-${selectedDate || "export"}${suffix}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -406,7 +421,10 @@ export default function LogisticsView({ canModify }) {
               <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Imprimer cette journée</button>
               <button type="button" onClick={() => printLogistics("all")} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Tous les jours</button>
             </div>
-            <button type="button" onClick={exportCsv} disabled={visible.length === 0} className="rounded-lg border border-[#8580d9] bg-[#24233a] px-4 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d] disabled:cursor-not-allowed disabled:opacity-40">Exporter CSV</button>
+            <div className="flex overflow-hidden rounded-lg border border-[#8580d9] bg-[#24233a]">
+              <button type="button" onClick={() => exportCsv("selected")} disabled={visible.length === 0} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d] disabled:cursor-not-allowed disabled:opacity-40">CSV cette journée</button>
+              <button type="button" onClick={() => exportCsv("all")} disabled={actions.length === 0} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d] disabled:cursor-not-allowed disabled:opacity-40">CSV toute la logistique</button>
+            </div>
             {canModify && (
               <button type="button" onClick={openCreateEditor} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] hover:bg-[#9995e3]">+ Ajouter une action</button>
             )}
