@@ -254,6 +254,58 @@ export default async function handler(req, res) {
       });
     }
 
+    if (req.method === "POST") {
+      const {
+        action,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        responsible,
+        status,
+        departure,
+        arrival,
+        type,
+        notes,
+      } = req.body || {};
+      if (!action?.trim() || !startDate || !startTime) {
+        return res.status(400).json({
+          error: "L'action, la date et l'heure de début sont requises.",
+        });
+      }
+
+      const values = {
+        [COLUMNS.start]: torontoDateTimeToUtc(startDate, startTime),
+        [COLUMNS.departure]: departure || "",
+        [COLUMNS.arrival]: arrival || "",
+        [COLUMNS.notes]: notes || "",
+      };
+      if (endDate && endTime) {
+        values[COLUMNS.end] = torontoDateTimeToUtc(endDate, endTime);
+      }
+      if (responsible) {
+        values[COLUMNS.responsible] = {
+          labels: responsible.split(",").map((label) => label.trim()).filter(Boolean),
+        };
+      }
+      if (status) values[COLUMNS.status] = { label: status };
+      if (type) values[COLUMNS.type] = { label: type };
+
+      const created = await mondayRequest(`
+        mutation {
+          create_item(
+            board_id: ${BOARD_ID}
+            item_name: ${JSON.stringify(action.trim())}
+            column_values: ${JSON.stringify(JSON.stringify(values))}
+          ) { id }
+        }
+      `);
+      return res.status(201).json({
+        success: true,
+        itemId: created.data?.create_item?.id,
+      });
+    }
+
     if (req.method === "PUT") {
       const {
         itemId,
