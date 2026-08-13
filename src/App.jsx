@@ -1088,10 +1088,13 @@ function App() {
 
   function handlePrint(scope) {
     setPrintScope(scope);
+    document.documentElement.dataset.printMode =
+      "programming";
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         window.print();
+        delete document.documentElement.dataset.printMode;
       });
     });
   }
