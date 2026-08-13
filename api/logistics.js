@@ -320,9 +320,28 @@ export default async function handler(req, res) {
         arrival,
         type,
         notes,
+        expectedUpdatedAt,
       } = req.body || {};
       if (!itemId) {
         return res.status(400).json({ error: "Item requis." });
+      }
+      const currentData = await mondayRequest(`
+        query {
+          items(ids: [${Number(itemId)}]) {
+            id
+            updated_at
+          }
+        }
+      `);
+      const currentItem = currentData.data?.items?.[0];
+      if (!currentItem) {
+        return res.status(404).json({ error: "Action introuvable dans Monday." });
+      }
+      if (expectedUpdatedAt && currentItem.updated_at !== expectedUpdatedAt) {
+        return res.status(409).json({
+          error: "Cette action a été modifiée par une autre personne. La logistique a été actualisée; veuillez refaire votre changement.",
+          conflict: true,
+        });
       }
       const values = {};
 
@@ -357,6 +376,32 @@ export default async function handler(req, res) {
             column_values: ${JSON.stringify(JSON.stringify(values))}
           ) { id }
         }
+      `);
+      return res.status(200).json({ success: true });
+    }
+
+    if (req.method === "DELETE") {
+      const { itemId, expectedUpdatedAt } = req.body || {};
+      if (!itemId) {
+        return res.status(400).json({ error: "Item requis." });
+      }
+      const currentData = await mondayRequest(`
+        query {
+          items(ids: [${Number(itemId)}]) { id updated_at }
+        }
+      `);
+      const currentItem = currentData.data?.items?.[0];
+      if (!currentItem) {
+        return res.status(404).json({ error: "Action introuvable dans Monday." });
+      }
+      if (expectedUpdatedAt && currentItem.updated_at !== expectedUpdatedAt) {
+        return res.status(409).json({
+          error: "Cette action a été modifiée par une autre personne. Suppression annulée.",
+          conflict: true,
+        });
+      }
+      await mondayRequest(`
+        mutation { delete_item(item_id: ${Number(itemId)}) { id } }
       `);
       return res.status(200).json({ success: true });
     }
