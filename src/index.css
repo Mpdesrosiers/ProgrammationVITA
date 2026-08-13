@@ -48,6 +48,10 @@ p {
   display: none;
 }
 
+.logistics-print-document {
+  display: none;
+}
+
 @page {
   size: landscape;
   margin: 8mm;
@@ -66,8 +70,126 @@ p {
     display: none !important;
   }
 
-  .print-document {
+  html[data-print-mode="programming"] .print-document {
     display: block;
+  }
+
+  html[data-print-mode="logistics"] .print-document {
+    display: none !important;
+  }
+
+  html[data-print-mode="logistics"] .logistics-print-document {
+    display: block;
+  }
+
+  html[data-print-mode="logistics"] main > :not(.logistics-print-document) {
+    display: none !important;
+  }
+
+  .logistics-print-day {
+    break-after: page;
+    page-break-after: always;
+    color: #111111;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .logistics-print-day:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .logistics-print-title {
+    position: relative;
+    margin-bottom: 4mm;
+    border-bottom: 0.5mm solid #625ea8;
+    padding-bottom: 3mm;
+  }
+
+  .logistics-print-title > div {
+    color: #625ea8;
+    font-size: 8pt;
+    font-weight: 700;
+  }
+
+  .logistics-print-title h1 {
+    margin: 1mm 0 0;
+    font-size: 17pt;
+    text-transform: capitalize;
+  }
+
+  .logistics-print-title > span {
+    position: absolute;
+    right: 0;
+    bottom: 3mm;
+    color: #666666;
+    font-size: 8pt;
+  }
+
+  .logistics-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 7.5pt;
+  }
+
+  .logistics-print-table thead {
+    display: table-header-group;
+  }
+
+  .logistics-print-table th {
+    background: #292a30;
+    color: #ffffff;
+    padding: 2.2mm;
+    text-align: left;
+  }
+
+  .logistics-print-table th:nth-child(1) { width: 13%; }
+  .logistics-print-table th:nth-child(2) { width: 27%; }
+  .logistics-print-table th:nth-child(3) { width: 12%; }
+  .logistics-print-table th:nth-child(4) { width: 20%; }
+  .logistics-print-table th:nth-child(5) { width: 18%; }
+  .logistics-print-table th:nth-child(6) { width: 10%; }
+
+  .logistics-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .logistics-print-table td {
+    border-bottom: 0.2mm solid #d6d6d6;
+    padding: 2mm;
+    vertical-align: top;
+  }
+
+  .logistics-print-table tbody tr:nth-child(even) {
+    background: #f4f4f5;
+  }
+
+  .logistics-print-time {
+    color: #514d9a;
+    font-size: 9pt;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .logistics-print-time small {
+    display: block;
+    color: #777777;
+    font-size: 6.5pt;
+  }
+
+  .logistics-print-action {
+    border-left: 1.5mm solid;
+    font-weight: 700;
+  }
+
+  .logistics-print-type {
+    display: inline-block;
+    border-radius: 2mm;
+    padding: 1mm 1.5mm;
+    font-size: 6.5pt;
+    font-weight: 700;
   }
 
   .print-page {
