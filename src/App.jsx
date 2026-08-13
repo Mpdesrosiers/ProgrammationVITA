@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import LogisticsView from "./LogisticsView.jsx";
 
 const zones = [
   "Terrain synthétique",
@@ -224,6 +225,9 @@ function getActivityColor(activity) {
 }
 
 function App() {
+  const [activeView, setActiveView] =
+    useState("programming");
+
   const [authLoading, setAuthLoading] =
     useState(true);
 
@@ -2274,8 +2278,27 @@ function App() {
               </div>
 
               <h1 className="mt-1 text-2xl font-semibold">
-                Programmation
+                {activeView === "programming"
+                  ? "Programmation"
+                  : "Logistique"}
               </h1>
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveView("programming")}
+                  className={"rounded-md px-3 py-1.5 text-xs font-semibold " + (activeView === "programming" ? "bg-[#8580d9] text-[#151619]" : "bg-[#303137] text-white hover:bg-[#404148]")}
+                >
+                  Programmation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveView("logistics")}
+                  className={"rounded-md px-3 py-1.5 text-xs font-semibold " + (activeView === "logistics" ? "bg-[#8580d9] text-[#151619]" : "bg-[#303137] text-white hover:bg-[#404148]")}
+                >
+                  Logistique
+                </button>
+              </div>
 
             </div>
 
@@ -2283,7 +2306,7 @@ function App() {
 
               {/* BOUTON AJOUTER */}
 
-              {canModify && (
+              {canModify && activeView === "programming" && (
                 <>
                   <button
                     type="button"
@@ -2304,6 +2327,7 @@ function App() {
                 </>
               )}
 
+              {activeView === "programming" && (
               <div className="flex gap-2">
 
                 {days.map((day) => (
@@ -2332,6 +2356,7 @@ function App() {
                 ))}
 
               </div>
+              )}
 
               <div className="ml-2 border-l border-[#3a3b42] pl-4 text-right">
                 <div className="text-xs font-semibold">
@@ -2357,7 +2382,7 @@ function App() {
 
       </header>
 
-      <section className="no-print border-b border-[#303137] bg-[#18191d] px-6 py-3">
+      <section className={(activeView === "programming" ? "" : "hidden ") + "no-print border-b border-[#303137] bg-[#18191d] px-6 py-3"}>
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-3">
           <input
             type="search"
@@ -2479,7 +2504,7 @@ function App() {
 
       {/* CALENDRIER */}
 
-      <main className="calendar-main overflow-x-auto p-6">
+      <main className={(activeView === "programming" ? "" : "hidden ") + "calendar-main overflow-x-auto p-6"}>
 
         {loading && (
 
@@ -2949,6 +2974,12 @@ function App() {
           )}
 
       </main>
+
+      {activeView === "logistics" && (
+        <LogisticsView
+          canModify={canModify}
+        />
+      )}
 
       <div className="print-document">
         {(printScope === "all"
