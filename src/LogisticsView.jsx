@@ -315,8 +315,16 @@ export default function LogisticsView({ canModify }) {
                 const [background, border] = colorFor(action.type);
                 const duration = end - start;
                 const gap = 6;
-                const left = `calc(76px + (100% - 84px) * ${lane} / ${laneCount} + ${gap / 2}px)`;
-                const width = `calc((100% - 84px) / ${laneCount} - ${gap}px)`;
+                const laneLeftPercent =
+                  (lane / laneCount) * 100;
+                const laneWidthPercent =
+                  100 / laneCount;
+                const laneLeftCorrection =
+                  84 * (lane / laneCount);
+                const laneWidthCorrection =
+                  84 / laneCount;
+                const left = `calc(76px + ${laneLeftPercent}% - ${laneLeftCorrection}px + ${gap / 2}px)`;
+                const width = `calc(${laneWidthPercent}% - ${laneWidthCorrection}px - ${gap}px)`;
                 if (isMilestone) {
                   return (
                     <div
@@ -448,6 +456,14 @@ export default function LogisticsView({ canModify }) {
               {printTimeline.actions.map(({ action, lane, laneCount, start, end, isMilestone }) => {
                   const [background, border] = colorFor(action.type);
                   const gap = 0.5;
+                  const laneLeftPercent =
+                    (lane / laneCount) * 100;
+                  const laneWidthPercent =
+                    100 / laneCount;
+                  const laneLeftCorrection =
+                    17 * (lane / laneCount);
+                  const laneWidthCorrection =
+                    17 / laneCount;
                   return (
                     <article
                       key={action.id}
@@ -455,8 +471,8 @@ export default function LogisticsView({ canModify }) {
                       style={{
                         top: `${((start - printTimeline.start) / printRange) * 100}%`,
                         height: isMilestone ? undefined : `${((end - start) / printRange) * 100}%`,
-                        left: `calc(15mm + (100% - 17mm) * ${lane} / ${laneCount} + ${gap}mm)`,
-                        width: `calc((100% - 17mm) / ${laneCount} - ${gap * 2}mm)`,
+                        left: `calc(15mm + ${laneLeftPercent}% - ${laneLeftCorrection}mm + ${gap}mm)`,
+                        width: `calc(${laneWidthPercent}% - ${laneWidthCorrection}mm - ${gap * 2}mm)`,
                         borderLeftColor: border,
                         "--milestone-color": border,
                       }}
