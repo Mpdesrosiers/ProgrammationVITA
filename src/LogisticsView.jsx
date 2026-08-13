@@ -151,6 +151,9 @@ export default function LogisticsView({ canModify }) {
   const [mineOnly, setMineOnly] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [printScope, setPrintScope] = useState("selected");
+  const [editingAction, setEditingAction] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   async function load(silent = false) {
     try {
@@ -186,6 +189,10 @@ export default function LogisticsView({ canModify }) {
     () => [...new Set(actions.flatMap((action) => (action.people || action.responsible).split(",").map((name) => name.trim())).filter(Boolean))].sort(),
     [actions]
   );
+  const types = useMemo(
+    () => [...new Set(actions.map((action) => action.type).filter(Boolean))].sort(),
+    [actions]
+  );
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return actions
@@ -218,6 +225,59 @@ export default function LogisticsView({ canModify }) {
       setError(err.message);
     } finally {
       setSavingId(null);
+    }
+  }
+
+  function openEditor(action) {
+    if (!canModify) return;
+    setEditingAction(action);
+    setEditForm({
+      action: action.action || "",
+      startDate: action.start?.date || "",
+      startTime: action.start?.time || "",
+      endDate: action.end?.date || "",
+      endTime: action.end?.time || "",
+      responsible: action.responsible || "",
+      status: action.status || "",
+      departure: action.departure || "",
+      arrival: action.arrival || "",
+      type: action.type || "",
+      notes: action.notes || "",
+    });
+  }
+
+  function closeEditor() {
+    if (editSaving) return;
+    setEditingAction(null);
+    setEditForm(null);
+  }
+
+  async function saveAction(event) {
+    event.preventDefault();
+    if (!editingAction || !editForm) return;
+    setEditSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/logistics", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemId: editingAction.id,
+          ...editForm,
+          endDate: editForm.endTime ? editForm.endDate || editForm.startDate : "",
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.details || data.error || "Impossible d'enregistrer la modification.");
+      }
+      await load(true);
+      setEditingAction(null);
+      setEditForm(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -360,7 +420,13 @@ export default function LogisticsView({ canModify }) {
                       />
                       <article
                         title={`${action.start.time} · ${action.action}`}
-                        className="absolute left-3 right-0 top-0 min-w-0 -translate-y-1/2 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg"
+                        role={canModify ? "button" : undefined}
+                        tabIndex={canModify ? 0 : undefined}
+                        onClick={() => openEditor(action)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") openEditor(action);
+                        }}
+                        className={`absolute left-3 right-0 top-0 min-w-0 -translate-y-1/2 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg ${canModify ? "cursor-pointer hover:bg-[#2d2e34]" : ""}`}
                         style={{ borderLeftColor: border }}
                       >
                         <div className="flex min-w-0 items-start gap-2 p-3">
@@ -375,7 +441,7 @@ export default function LogisticsView({ canModify }) {
                             {(action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
                           </div>
                           {canModify ? (
-                            <select aria-label={`Statut de ${action.action}`} disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="max-w-[105px] shrink-0 rounded border border-[#3a3b42] bg-[#151619] px-1.5 py-1 text-[11px] font-semibold">
+                            <select aria-label={`Statut de ${action.action}`} onClick={(event) => event.stopPropagation()} disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="max-w-[105px] shrink-0 rounded border border-[#3a3b42] bg-[#151619] px-1.5 py-1 text-[11px] font-semibold">
                               <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
                             </select>
                           ) : (
@@ -391,7 +457,13 @@ export default function LogisticsView({ canModify }) {
                   <article
                     key={action.id}
                     title={`${action.start.time}–${action.end?.time || minutesToTime(end)} · ${action.action}`}
-                    className="absolute min-w-0 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg"
+                    role={canModify ? "button" : undefined}
+                    tabIndex={canModify ? 0 : undefined}
+                    onClick={() => openEditor(action)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") openEditor(action);
+                    }}
+                    className={`absolute min-w-0 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg ${canModify ? "cursor-pointer hover:bg-[#2d2e34]" : ""}`}
                     style={{
                       top:
                         (start - timeline.start) *
@@ -420,6 +492,7 @@ export default function LogisticsView({ canModify }) {
                       {canModify ? (
                         <select
                           aria-label={`Statut de ${action.action}`}
+                          onClick={(event) => event.stopPropagation()}
                           disabled={savingId === action.id}
                           value={action.status}
                           onChange={(event) => changeStatus(action, event.target.value)}
@@ -438,6 +511,76 @@ export default function LogisticsView({ canModify }) {
           </div>
         )}
       </div>
+
+      {editingAction && editForm && (
+        <div
+          className="no-print fixed inset-0 z-[5000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeEditor();
+          }}
+        >
+          <form onSubmit={saveAction} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#3a3b42] bg-[#1b1c20] p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs font-semibold uppercase text-[#8580d9]">Modification Monday</div>
+                <h2 className="mt-1 text-xl font-semibold">Modifier l’action logistique</h2>
+              </div>
+              <button type="button" onClick={closeEditor} className="rounded px-2 py-1 text-xl text-[#a1a1a8] hover:bg-[#303137] hover:text-white">×</button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="md:col-span-2 text-sm">Action
+                <input required value={editForm.action} onChange={(event) => setEditForm((current) => ({ ...current, action: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+              <label className="text-sm">Date de début
+                <input required type="date" value={editForm.startDate} onChange={(event) => setEditForm((current) => ({ ...current, startDate: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+              <label className="text-sm">Heure de début
+                <input required type="time" step="60" value={editForm.startTime} onChange={(event) => setEditForm((current) => ({ ...current, startTime: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+              <label className="text-sm">Date de fin
+                <input type="date" value={editForm.endDate} onChange={(event) => setEditForm((current) => ({ ...current, endDate: event.target.value }))} disabled={!editForm.endTime} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 disabled:opacity-40" />
+              </label>
+              <label className="text-sm">Heure de fin
+                <input type="time" step="60" value={editForm.endTime} onChange={(event) => setEditForm((current) => ({ ...current, endTime: event.target.value, endDate: event.target.value ? current.endDate || current.startDate : "" }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+                <span className="mt-1 block text-xs text-[#85858c]">Laisse vide pour afficher un jalon.</span>
+              </label>
+              <label className="text-sm">Responsable(s)
+                <input list="logistics-responsibles" value={editForm.responsible} onChange={(event) => setEditForm((current) => ({ ...current, responsible: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+              <label className="text-sm">Statut
+                <select value={editForm.status} onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5">
+                  <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
+                </select>
+              </label>
+              <label className="text-sm">Type
+                <input list="logistics-types" value={editForm.type} onChange={(event) => setEditForm((current) => ({ ...current, type: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+              <label className="text-sm">Personne(s) assignée(s) dans Monday
+                <input readOnly value={editingAction.people || "Aucune"} className="mt-1 w-full rounded-lg border border-[#303137] bg-[#202126] px-3 py-2.5 text-[#a1a1a8]" />
+              </label>
+              <label className="text-sm">Départ
+                <input value={editForm.departure} onChange={(event) => setEditForm((current) => ({ ...current, departure: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+              <label className="text-sm">Arrivée
+                <input value={editForm.arrival} onChange={(event) => setEditForm((current) => ({ ...current, arrival: event.target.value }))} className="mt-1 w-full rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+              <label className="md:col-span-2 text-sm">Notes
+                <textarea rows="4" value={editForm.notes} onChange={(event) => setEditForm((current) => ({ ...current, notes: event.target.value }))} className="mt-1 w-full resize-y rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5" />
+              </label>
+            </div>
+
+            <datalist id="logistics-responsibles">{responsibles.map((name) => <option key={name} value={name} />)}</datalist>
+            <datalist id="logistics-types">{types.map((name) => <option key={name} value={name} />)}</datalist>
+
+            {error && <div className="mt-4 rounded-lg border border-[#df2f4a] bg-[#24171a] p-3 text-sm text-[#ff8b9a]">{error}</div>}
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={closeEditor} disabled={editSaving} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm font-semibold disabled:opacity-50">Annuler</button>
+              <button type="submit" disabled={editSaving} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] disabled:opacity-50">{editSaving ? "Sauvegarde…" : "Enregistrer dans Monday"}</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className={`logistics-print-document ${printScope === "all" ? "is-all-days" : "is-single-day"}`}>
         {(printScope === "all"
