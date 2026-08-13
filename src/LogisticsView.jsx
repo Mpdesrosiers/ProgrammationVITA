@@ -190,7 +190,7 @@ export default function LogisticsView({ canModify }) {
     const query = search.trim().toLowerCase();
     return actions
       .filter((action) => action.start.date === selectedDate)
-      .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible}`.toLowerCase().includes(query))
+      .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible} ${action.notes}`.toLowerCase().includes(query))
       .filter((action) => !status || action.status === status)
       .filter((action) => !responsible || (action.people || action.responsible).split(",").map((name) => name.trim()).includes(responsible))
       .filter((action) => !mineOnly || action.isMine)
@@ -370,6 +370,7 @@ export default function LogisticsView({ canModify }) {
                               <span className="text-xs font-semibold text-[#b9b6ff]">{action.start.time}</span>
                             </div>
                             <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
+                            {action.notes && <div className="mt-1 truncate text-xs text-[#e0c98b]" title={action.notes}><span className="text-[#a99562]">Note : </span>{action.notes}</div>}
                             {(action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
                             {(action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
                           </div>
@@ -412,6 +413,7 @@ export default function LogisticsView({ canModify }) {
                           <span className="truncate text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
                         </div>
                         <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
+                        {action.notes && <div className="mt-1 truncate text-xs text-[#e0c98b]" title={action.notes}><span className="text-[#a99562]">Note : </span>{action.notes}</div>}
                         {duration >= 30 && (action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
                         {duration >= 45 && (action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
                       </div>
@@ -499,6 +501,7 @@ export default function LogisticsView({ canModify }) {
                         <em>{action.status || "Sans statut"}</em>
                       </div>
                       <strong>{action.action}</strong>
+                      {action.notes && <small className="logistics-print-note">Note : {action.notes}</small>}
                       {(action.people || action.responsible) && <small>Qui : {action.people || action.responsible}</small>}
                       {(action.departure || action.arrival) && <small>Lieu : {action.departure || "—"} → {action.arrival || "—"}</small>}
                     </article>
