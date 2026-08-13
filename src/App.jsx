@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import LogisticsView from "./LogisticsView.jsx";
 
+// Vues Programmation et Logistique réunies dans la même application.
+
 const zones = [
   "Terrain synthétique",
   "Asphalte",
