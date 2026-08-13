@@ -37,6 +37,7 @@ function timeToMinutes(time) {
 
 function actionInterval(action, selectedDate) {
   const start = timeToMinutes(action.start.time);
+  const isMilestone = !action.end?.time;
   let end = action.end?.time
     ? timeToMinutes(action.end.time)
     : start + 30;
@@ -50,6 +51,7 @@ function actionInterval(action, selectedDate) {
   return {
     start,
     end: end > start ? end : start + 30,
+    isMilestone,
   };
 }
 
@@ -91,8 +93,24 @@ function buildTimeline(actions, selectedDate) {
   const latest = laidOut.length
     ? Math.max(...laidOut.map((entry) => entry.end))
     : 18 * 60;
-  const rangeStart = Math.floor(earliest / 60) * 60;
-  const rangeEnd = Math.ceil(latest / 60) * 60;
+  let rangeStart = Math.floor(earliest / 60) * 60;
+  let rangeEnd = Math.ceil(latest / 60) * 60;
+  if (
+    laidOut.some(
+      (entry) =>
+        entry.isMilestone && entry.start - rangeStart < 30
+    )
+  ) {
+    rangeStart -= 30;
+  }
+  if (
+    laidOut.some(
+      (entry) =>
+        entry.isMilestone && rangeEnd - entry.start < 30
+    )
+  ) {
+    rangeEnd += 30;
+  }
 
   return {
     actions: laidOut,
@@ -293,12 +311,57 @@ export default function LogisticsView({ canModify }) {
 
               <div className="absolute bottom-0 left-[76px] top-0 border-l border-[#3a3b42]" />
 
-              {timeline.actions.map(({ action, lane, laneCount, start, end }) => {
+              {timeline.actions.map(({ action, lane, laneCount, start, end, isMilestone }) => {
                 const [background, border] = colorFor(action.type);
                 const duration = end - start;
                 const gap = 6;
                 const left = `calc(76px + (100% - 84px) * ${lane} / ${laneCount} + ${gap / 2}px)`;
                 const width = `calc((100% - 84px) / ${laneCount} - ${gap}px)`;
+                if (isMilestone) {
+                  return (
+                    <div
+                      key={action.id}
+                      className="absolute z-20"
+                      style={{
+                        top:
+                          (start - timeline.start) *
+                          TIMELINE_PIXELS_PER_MINUTE,
+                        left,
+                        width,
+                      }}
+                    >
+                      <div
+                        className="absolute left-0 top-0 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-45 border-2 border-[#151619]"
+                        style={{ backgroundColor: border }}
+                      />
+                      <article
+                        title={`${action.start.time} · ${action.action}`}
+                        className="absolute left-3 right-0 top-0 min-w-0 -translate-y-1/2 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg"
+                        style={{ borderLeftColor: border }}
+                      >
+                        <div className="flex min-w-0 items-start gap-2 p-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>Jalon · {action.type || "Logistique"}</span>
+                              <span className="text-xs font-semibold text-[#b9b6ff]">{action.start.time}</span>
+                            </div>
+                            <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
+                            {(action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
+                            {(action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
+                          </div>
+                          {canModify ? (
+                            <select aria-label={`Statut de ${action.action}`} disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="max-w-[105px] shrink-0 rounded border border-[#3a3b42] bg-[#151619] px-1.5 py-1 text-[11px] font-semibold">
+                              <option value="">Sans statut</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option>
+                            </select>
+                          ) : (
+                            <span className="max-w-[95px] truncate rounded bg-[#303137] px-2 py-1 text-[11px]">{action.status || "Sans statut"}</span>
+                          )}
+                        </div>
+                      </article>
+                    </div>
+                  );
+                }
+
                 return (
                   <article
                     key={action.id}
@@ -382,24 +445,25 @@ export default function LogisticsView({ canModify }) {
                 </div>
               ))}
 
-              {printTimeline.actions.map(({ action, lane, laneCount, start, end }) => {
+              {printTimeline.actions.map(({ action, lane, laneCount, start, end, isMilestone }) => {
                   const [background, border] = colorFor(action.type);
                   const gap = 0.5;
                   return (
                     <article
                       key={action.id}
-                      className="logistics-print-block"
+                      className={`logistics-print-block ${isMilestone ? "is-milestone" : ""}`}
                       style={{
                         top: `${((start - printTimeline.start) / printRange) * 100}%`,
-                        height: `${((end - start) / printRange) * 100}%`,
+                        height: isMilestone ? undefined : `${((end - start) / printRange) * 100}%`,
                         left: `calc(15mm + (100% - 17mm) * ${lane} / ${laneCount} + ${gap}mm)`,
                         width: `calc((100% - 17mm) / ${laneCount} - ${gap * 2}mm)`,
                         borderLeftColor: border,
+                        "--milestone-color": border,
                       }}
                     >
                       <div className="logistics-print-block-head">
-                        <span style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
-                        <time>{action.start.time}–{action.end?.time || minutesToTime(end)}</time>
+                        <span style={{ backgroundColor: background }}>{isMilestone ? "Jalon · " : ""}{action.type || "Logistique"}</span>
+                        <time>{action.start.time}{isMilestone ? "" : `–${action.end?.time || minutesToTime(end)}`}</time>
                         <em>{action.status || "Sans statut"}</em>
                       </div>
                       <strong>{action.action}</strong>
