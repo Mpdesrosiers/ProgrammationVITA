@@ -126,6 +126,119 @@ p {
     font-size: 8pt;
   }
 
+  .logistics-print-title > strong {
+    display: block;
+    margin-top: 1mm;
+    color: #514d9a;
+    font-size: 8pt;
+  }
+
+  .logistics-print-timeline {
+    position: relative;
+    height: 170mm;
+    overflow: hidden;
+    border: 0.3mm solid #777777;
+    background: #ffffff;
+  }
+
+  .logistics-print-timeline::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 15mm;
+    border-left: 0.25mm solid #888888;
+    content: "";
+  }
+
+  .logistics-print-gridline {
+    position: absolute;
+    right: 0;
+    left: 0;
+    border-top: 0.15mm solid #d9d9dc;
+  }
+
+  .logistics-print-gridline.is-hour {
+    border-top-color: #9c9ca3;
+  }
+
+  .logistics-print-gridline time {
+    position: absolute;
+    top: 0;
+    left: 1.5mm;
+    transform: translateY(-50%);
+    background: #ffffff;
+    padding: 0 0.7mm;
+    color: #514d9a;
+    font-size: 6.5pt;
+    font-weight: 800;
+  }
+
+  .logistics-print-block {
+    position: absolute;
+    z-index: 2;
+    min-height: 4mm;
+    overflow: hidden;
+    border: 0.2mm solid #b7b7bc;
+    border-left: 1.2mm solid;
+    border-radius: 1.2mm;
+    background: #f1f1f3;
+    padding: 1mm;
+    color: #171717;
+    font-size: 6pt;
+    line-height: 1.12;
+  }
+
+  .logistics-print-block-head {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 1mm;
+    margin-bottom: 0.6mm;
+  }
+
+  .logistics-print-block-head span {
+    flex: 0 0 auto;
+    border-radius: 1mm;
+    padding: 0.4mm 0.8mm;
+    font-size: 5pt;
+    font-weight: 800;
+  }
+
+  .logistics-print-block-head time {
+    color: #514d9a;
+    font-size: 5.5pt;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .logistics-print-block-head em {
+    margin-left: auto;
+    overflow: hidden;
+    color: #555555;
+    font-size: 5pt;
+    font-style: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logistics-print-block > strong,
+  .logistics-print-block > small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logistics-print-block > strong {
+    font-size: 6.5pt;
+  }
+
+  .logistics-print-block > small {
+    margin-top: 0.5mm;
+    color: #4f4f55;
+    font-size: 5pt;
+  }
+
   .logistics-print-table {
     width: 100%;
     border-collapse: collapse;
