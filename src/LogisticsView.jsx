@@ -319,6 +319,60 @@ export default function LogisticsView({ canModify }) {
     });
   }
 
+  function exportCsv() {
+    const escapeCsv = (value) =>
+      `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const headers = [
+      "ID Monday",
+      "Date début",
+      "Heure début",
+      "Date fin",
+      "Heure fin",
+      "Format",
+      "Action",
+      "Type",
+      "Responsable(s)",
+      "Qui",
+      "Statut",
+      "Départ",
+      "Arrivée",
+      "Notes",
+    ];
+    const rows = visible.map((action) => [
+      action.id,
+      action.start?.date,
+      action.start?.time,
+      action.end?.date,
+      action.end?.time,
+      action.end?.time ? "Action avec durée" : "Jalon",
+      action.action,
+      action.type,
+      action.responsible,
+      action.people,
+      action.status,
+      action.departure,
+      action.arrival,
+      action.notes,
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(";"))
+      .join("\r\n");
+    const blob = new Blob(["\uFEFF", csv], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const suffix = responsible
+      ? `-${responsible.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`
+      : "";
+    link.href = url;
+    link.download = `logistique-${selectedDate || "export"}${suffix}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   function actionsForDate(date) {
     return actions
       .filter((action) => action.start.date === date)
@@ -352,6 +406,7 @@ export default function LogisticsView({ canModify }) {
               <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Imprimer cette journée</button>
               <button type="button" onClick={() => printLogistics("all")} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Tous les jours</button>
             </div>
+            <button type="button" onClick={exportCsv} disabled={visible.length === 0} className="rounded-lg border border-[#8580d9] bg-[#24233a] px-4 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d] disabled:cursor-not-allowed disabled:opacity-40">Exporter CSV</button>
             {canModify && (
               <button type="button" onClick={openCreateEditor} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] hover:bg-[#9995e3]">+ Ajouter une action</button>
             )}
