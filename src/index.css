@@ -239,6 +239,98 @@ p {
     font-size: 5pt;
   }
 
+  /* Deux déroulements compacts par page lorsque tous les jours sont imprimés. */
+  .logistics-print-document.is-all-days .logistics-print-day {
+    height: 96mm;
+    margin: 0;
+    break-after: auto;
+    page-break-after: auto;
+    overflow: hidden;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-day:nth-child(even) {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-day:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-title {
+    height: 13mm;
+    margin-bottom: 2mm;
+    padding-bottom: 1.5mm;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-title > div {
+    font-size: 6pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-title h1 {
+    margin-top: 0.4mm;
+    font-size: 11pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-title > strong {
+    margin-top: 0.3mm;
+    font-size: 6pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-title > span {
+    bottom: 1.5mm;
+    font-size: 6pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-timeline {
+    height: 79mm;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-gridline time {
+    font-size: 5pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block {
+    min-height: 3.2mm;
+    padding: 0.55mm 0.7mm;
+    font-size: 4.6pt;
+    line-height: 1.02;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block-head {
+    gap: 0.6mm;
+    margin-bottom: 0.25mm;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block-head span {
+    padding: 0.2mm 0.5mm;
+    font-size: 4pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block-head time,
+  .logistics-print-document.is-all-days .logistics-print-block-head em {
+    font-size: 4.2pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block > strong {
+    font-size: 5pt;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block > small {
+    margin-top: 0.15mm;
+    font-size: 4.1pt;
+  }
+
+  .logistics-print-document.is-single-day .logistics-print-title {
+    margin-bottom: 2mm;
+    padding-bottom: 2mm;
+  }
+
+  .logistics-print-document.is-single-day .logistics-print-timeline {
+    height: 176mm;
+  }
+
   .logistics-print-table {
     width: 100%;
     border-collapse: collapse;
