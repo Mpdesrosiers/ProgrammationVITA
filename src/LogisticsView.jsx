@@ -33,6 +33,7 @@ export default function LogisticsView({ canModify }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [responsible, setResponsible] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
   const [savingId, setSavingId] = useState(null);
 
   async function load(silent = false) {
@@ -66,18 +67,19 @@ export default function LogisticsView({ canModify }) {
     [actions]
   );
   const responsibles = useMemo(
-    () => [...new Set(actions.flatMap((action) => action.responsible.split(",").map((name) => name.trim())).filter(Boolean))].sort(),
+    () => [...new Set(actions.flatMap((action) => (action.people || action.responsible).split(",").map((name) => name.trim())).filter(Boolean))].sort(),
     [actions]
   );
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return actions
       .filter((action) => action.start.date === selectedDate)
-      .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.responsible}`.toLowerCase().includes(query))
+      .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible}`.toLowerCase().includes(query))
       .filter((action) => !status || action.status === status)
-      .filter((action) => !responsible || action.responsible.split(",").map((name) => name.trim()).includes(responsible))
+      .filter((action) => !responsible || (action.people || action.responsible).split(",").map((name) => name.trim()).includes(responsible))
+      .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
-  }, [actions, selectedDate, search, status, responsible]);
+  }, [actions, selectedDate, search, status, responsible, mineOnly]);
 
   async function changeStatus(action, newStatus) {
     setSavingId(action.id);
@@ -118,10 +120,11 @@ export default function LogisticsView({ canModify }) {
           ))}
         </div>
 
-        <div className="mb-7 grid gap-3 rounded-xl border border-[#303137] bg-[#1b1c20] p-4 md:grid-cols-[1fr_190px_190px]">
+        <div className="mb-7 grid gap-3 rounded-xl border border-[#303137] bg-[#1b1c20] p-4 md:grid-cols-[1fr_190px_190px_auto]">
           <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une action, un lieu…" className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm outline-none focus:border-[#8580d9]" />
           <select value={responsible} onChange={(event) => setResponsible(event.target.value)} className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm"><option value="">Tous les responsables</option>{responsibles.map((name) => <option key={name}>{name}</option>)}</select>
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm"><option value="">Tous les statuts</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option></select>
+          <button type="button" onClick={() => setMineOnly((current) => !current)} className={"rounded-lg px-4 py-2.5 text-sm font-semibold " + (mineOnly ? "bg-[#8580d9] text-[#151619]" : "border border-[#3a3b42] bg-[#303137] text-white hover:bg-[#404148]")}>Mes tâches</button>
         </div>
 
         {error && <div className="mb-5 rounded-lg border border-[#df2f4a] bg-[#24171a] p-4 text-sm text-[#ff8b9a]">{error}</div>}
@@ -145,7 +148,7 @@ export default function LogisticsView({ canModify }) {
                     </div>
                     <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
                       {(action.departure || action.arrival) && <div><div className="text-xs uppercase text-[#85858c]">Déplacement / lieu</div><div className="mt-1">{action.departure || "—"} <span className="text-[#8580d9]">→</span> {action.arrival || "—"}</div></div>}
-                      {action.responsible && <div><div className="text-xs uppercase text-[#85858c]">Responsable(s)</div><div className="mt-1 font-semibold">{action.responsible}</div></div>}
+                      {(action.people || action.responsible) && <div><div className="text-xs uppercase text-[#85858c]">Qui</div><div className="mt-1 font-semibold">{action.people || action.responsible}</div>{action.people && action.responsible && <div className="mt-1 text-xs text-[#85858c]">Équipe : {action.responsible}</div>}</div>}
                     </div>
                   </div>
                 </div>
