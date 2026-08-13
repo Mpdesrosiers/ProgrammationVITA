@@ -52,6 +52,34 @@ function parseDateColumn(column) {
   }
 }
 
+function torontoDateTimeToUtc(date, time) {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const target = Date.UTC(year, month - 1, day, hour, minute);
+
+  const offsetAt = (timestamp) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Toronto",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(timestamp));
+    const get = (type) => Number(parts.find((part) => part.type === type)?.value);
+    return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute")) - timestamp;
+  };
+
+  let utc = target - offsetAt(target);
+  utc = target - offsetAt(utc);
+  const result = new Date(utc);
+  return {
+    date: result.toISOString().slice(0, 10),
+    time: `${result.toISOString().slice(11, 16)}:00`,
+  };
+}
+
 export default async function handler(req, res) {
   const session = requireSession(
     req,
@@ -199,13 +227,48 @@ export default async function handler(req, res) {
     }
 
     if (req.method === "PUT") {
-      const { itemId, status } = req.body || {};
-      if (!itemId || !status) {
-        return res.status(400).json({ error: "Item et statut requis." });
+      const {
+        itemId,
+        action,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+        responsible,
+        status,
+        departure,
+        arrival,
+        type,
+        notes,
+      } = req.body || {};
+      if (!itemId) {
+        return res.status(400).json({ error: "Item requis." });
       }
-      const values = {
-        [COLUMNS.status]: { label: status },
-      };
+      const values = {};
+
+      if (action !== undefined) values.name = action.trim();
+      if (status !== undefined) values[COLUMNS.status] = status ? { label: status } : null;
+      if (responsible !== undefined) {
+        values[COLUMNS.responsible] = responsible
+          ? { labels: responsible.split(",").map((label) => label.trim()).filter(Boolean) }
+          : null;
+      }
+      if (departure !== undefined) values[COLUMNS.departure] = departure;
+      if (arrival !== undefined) values[COLUMNS.arrival] = arrival;
+      if (type !== undefined) values[COLUMNS.type] = type ? { label: type } : null;
+      if (notes !== undefined) values[COLUMNS.notes] = notes;
+      if (startDate !== undefined || startTime !== undefined) {
+        if (!startDate || !startTime) {
+          return res.status(400).json({ error: "La date et l'heure de début sont requises." });
+        }
+        values[COLUMNS.start] = torontoDateTimeToUtc(startDate, startTime);
+      }
+      if (endDate !== undefined || endTime !== undefined) {
+        values[COLUMNS.end] = endDate && endTime
+          ? torontoDateTimeToUtc(endDate, endTime)
+          : null;
+      }
+
       await mondayRequest(`
         mutation {
           change_multiple_column_values(
