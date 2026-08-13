@@ -202,6 +202,14 @@ export default function LogisticsView({ canModify }) {
   function actionsForDate(date) {
     return actions
       .filter((action) => action.start.date === date)
+      .filter(
+        (action) =>
+          !responsible ||
+          (action.people || action.responsible)
+            .split(",")
+            .map((name) => name.trim())
+            .includes(responsible)
+      )
       .sort((a, b) =>
         `${a.start.time}-${a.action}`.localeCompare(
           `${b.start.time}-${b.action}`
@@ -240,6 +248,12 @@ export default function LogisticsView({ canModify }) {
           <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm"><option value="">Tous les statuts</option><option>À faire</option><option>En cours</option><option>Terminé</option><option>Bloqué</option></select>
           <button type="button" onClick={() => setMineOnly((current) => !current)} className={"rounded-lg px-4 py-2.5 text-sm font-semibold " + (mineOnly ? "bg-[#8580d9] text-[#151619]" : "border border-[#3a3b42] bg-[#303137] text-white hover:bg-[#404148]")}>Mes tâches</button>
         </div>
+
+        {responsible && (
+          <div className="mb-4 text-sm text-[#b9b6ff]">
+            L’impression contiendra seulement les actions de <strong>{responsible}</strong>.
+          </div>
+        )}
 
         {error && <div className="mb-5 rounded-lg border border-[#df2f4a] bg-[#24171a] p-4 text-sm text-[#ff8b9a]">{error}</div>}
 
@@ -340,46 +354,64 @@ export default function LogisticsView({ canModify }) {
         {(printScope === "all"
           ? dates
           : dates.filter((date) => date === selectedDate)
-        ).map((date) => (
+        ).map((date) => {
+          const printActions = actionsForDate(date);
+          const printTimeline = buildTimeline(printActions, date);
+          const printRange = printTimeline.end - printTimeline.start;
+
+          return (
           <section key={date} className="logistics-print-day">
             <header className="logistics-print-title">
               <div>FESTIVAL VITA 2026 · DÉROULEMENT LOGISTIQUE</div>
               <h1>{displayDate(date)}</h1>
-              <span>{actionsForDate(date).length} action{actionsForDate(date).length !== 1 ? "s" : ""}</span>
+              {responsible && <strong>Responsable : {responsible}</strong>}
+              <span>{printActions.length} action{printActions.length !== 1 ? "s" : ""}</span>
             </header>
 
-            <table className="logistics-print-table">
-              <thead>
-                <tr>
-                  <th>Heure</th>
-                  <th>Action</th>
-                  <th>Type</th>
-                  <th>Départ → Arrivée</th>
-                  <th>Qui</th>
-                  <th>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {actionsForDate(date).map((action) => {
+            <div className="logistics-print-timeline">
+              {Array.from(
+                { length: Math.floor(printRange / 30) + 1 },
+                (_, index) => printTimeline.start + index * 30
+              ).map((minute) => (
+                <div
+                  key={minute}
+                  className={`logistics-print-gridline ${minute % 60 === 0 ? "is-hour" : ""}`}
+                  style={{ top: `${((minute - printTimeline.start) / printRange) * 100}%` }}
+                >
+                  {minute % 60 === 0 && <time>{minutesToTime(minute)}</time>}
+                </div>
+              ))}
+
+              {printTimeline.actions.map(({ action, lane, laneCount, start, end }) => {
                   const [background, border] = colorFor(action.type);
+                  const gap = 0.5;
                   return (
-                    <tr key={action.id}>
-                      <td className="logistics-print-time">
-                        {action.start.time}
-                        {action.end?.time && <small>–{action.end.time}</small>}
-                      </td>
-                      <td className="logistics-print-action" style={{ borderLeftColor: border }}>{action.action}</td>
-                      <td><span className="logistics-print-type" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span></td>
-                      <td>{action.departure || "—"} → {action.arrival || "—"}</td>
-                      <td>{action.people || action.responsible || "—"}</td>
-                      <td>{action.status || "—"}</td>
-                    </tr>
+                    <article
+                      key={action.id}
+                      className="logistics-print-block"
+                      style={{
+                        top: `${((start - printTimeline.start) / printRange) * 100}%`,
+                        height: `${((end - start) / printRange) * 100}%`,
+                        left: `calc(15mm + (100% - 17mm) * ${lane} / ${laneCount} + ${gap}mm)`,
+                        width: `calc((100% - 17mm) / ${laneCount} - ${gap * 2}mm)`,
+                        borderLeftColor: border,
+                      }}
+                    >
+                      <div className="logistics-print-block-head">
+                        <span style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
+                        <time>{action.start.time}–{action.end?.time || minutesToTime(end)}</time>
+                        <em>{action.status || "Sans statut"}</em>
+                      </div>
+                      <strong>{action.action}</strong>
+                      {(action.people || action.responsible) && <small>Qui : {action.people || action.responsible}</small>}
+                      {(action.departure || action.arrival) && <small>Lieu : {action.departure || "—"} → {action.arrival || "—"}</small>}
+                    </article>
                   );
                 })}
-              </tbody>
-            </table>
+            </div>
           </section>
-        ))}
+          );
+        })}
       </div>
     </main>
   );
