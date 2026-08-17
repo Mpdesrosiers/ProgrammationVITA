@@ -90,6 +90,7 @@ p {
     break-inside: avoid;
     page-break-after: always;
     page-break-inside: avoid;
+    overflow: hidden;
     color: #111111;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
@@ -374,7 +375,7 @@ p {
     margin: 0;
     break-after: page;
     page-break-after: always;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .logistics-print-document.is-all-days .logistics-print-day:last-child {
