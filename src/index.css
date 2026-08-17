@@ -639,7 +639,7 @@ p {
 
 @media print and (orientation: portrait) {
   .print-page {
-    height: 278mm;
+    height: 260mm;
   }
 
   .print-page-title {
@@ -673,7 +673,7 @@ p {
   }
 
   .print-schedule {
-    height: 248mm;
+    height: 230mm;
   }
 
   .print-time-axis span {
