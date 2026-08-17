@@ -248,7 +248,7 @@ export default function LogisticsView({ canModify }) {
     [actions]
   );
   const responsibles = useMemo(
-    () => [...new Set(actions.flatMap((action) => (action.people || action.responsible).split(",").map((name) => name.trim())).filter(Boolean))].sort(),
+    () => [...new Set(actions.flatMap((action) => action.responsible.split(",").map((name) => name.trim())).filter(Boolean))].sort(),
     [actions]
   );
   const responsibleOptions = columnOptions[LOGISTICS_COLUMNS.responsible] || [];
@@ -260,7 +260,7 @@ export default function LogisticsView({ canModify }) {
       .filter((action) => action.start.date === selectedDate)
       .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible} ${action.notes}`.toLowerCase().includes(query))
       .filter((action) => !status || action.status === status)
-      .filter((action) => !responsible || (action.people || action.responsible).split(",").map((name) => name.trim()).includes(responsible))
+      .filter((action) => !responsible || action.responsible.split(",").map((name) => name.trim()).includes(responsible))
       .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
   }, [actions, selectedDate, search, status, responsible, mineOnly]);
@@ -507,7 +507,8 @@ export default function LogisticsView({ canModify }) {
               <div className="truncate text-sm font-semibold">{members.length > 1 ? "• " : ""}{member.action}</div>
             )}
             {member.notes && <div className="truncate text-xs text-[#e0c98b]" title={member.notes}><span className="text-[#a99562]">Note : </span>{member.notes}</div>}
-            {(member.people || member.responsible) && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{member.people || member.responsible}</div>}
+            {member.responsible && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Responsable(s) : </span>{member.responsible}</div>}
+            {member.people && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{member.people}</div>}
           </div>
         ))}
       </div>
@@ -551,7 +552,7 @@ export default function LogisticsView({ canModify }) {
     ))
       .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible} ${action.notes}`.toLowerCase().includes(query))
       .filter((action) => !status || action.status === status)
-      .filter((action) => !responsible || (action.people || action.responsible).split(",").map((name) => name.trim()).includes(responsible))
+      .filter((action) => !responsible || action.responsible.split(",").map((name) => name.trim()).includes(responsible))
       .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) =>
         `${a.start?.date}-${a.start?.time}-${a.action}`.localeCompare(
@@ -601,7 +602,7 @@ export default function LogisticsView({ canModify }) {
       .filter(
         (action) =>
           !responsible ||
-          (action.people || action.responsible)
+          action.responsible
             .split(",")
             .map((name) => name.trim())
             .includes(responsible)
@@ -1001,7 +1002,8 @@ export default function LogisticsView({ canModify }) {
                         <div key={member.id} className="logistics-print-member">
                           <strong>{action.groupedActions ? "• " : ""}{member.action}</strong>
                           {member.notes && <small className="logistics-print-note">Note : {member.notes}</small>}
-                          {(member.people || member.responsible) && <small>Qui : {member.people || member.responsible}</small>}
+                          {member.responsible && <small>Responsable(s) : {member.responsible}</small>}
+                          {member.people && <small>Qui : {member.people}</small>}
                         </div>
                       ))}
                       {(action.departure || action.arrival) && <small>Lieu : {action.departure || "—"} → {action.arrival || "—"}</small>}
