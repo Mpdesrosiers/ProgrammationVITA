@@ -971,7 +971,7 @@ export default function LogisticsView({ canModify }) {
                   return (
                     <article
                       key={action.id}
-                      className={`logistics-print-block ${isMilestone ? "is-milestone" : ""}`}
+                      className={`logistics-print-block ${isMilestone ? "is-milestone" : ""} ${isMilestone || end - start < 60 ? "is-compact-print" : ""}`}
                       style={{
                         top: `${((start - printTimeline.start) / printRange) * 100}%`,
                         height: isMilestone ? undefined : `${((end - start) / printRange) * 100}%`,
@@ -986,15 +986,16 @@ export default function LogisticsView({ canModify }) {
                         <time>{action.start.time}{isMilestone ? "" : `–${action.end?.time || minutesToTime(end)}`}</time>
                         <em>{action.status || "Sans statut"}</em>
                       </div>
-                      {(action.groupedActions || [action]).map((member) => (
-                        <div key={member.id} className="logistics-print-member">
-                          <strong>{action.groupedActions ? "• " : ""}{member.action}</strong>
-                          {member.notes && <small className="logistics-print-note">Note : {member.notes}</small>}
-                          {!action.groupedActions && member.responsible && <small>Responsable(s) : {member.responsible}</small>}
-                        </div>
-                      ))}
-                      {action.groupedActions && action.responsible && <small>Responsable(s) : {action.responsible}</small>}
-                      {(action.departure || action.arrival) && <small>Lieu : {action.departure || "—"} → {action.arrival || "—"}</small>}
+                      <div className="logistics-print-members">
+                        {(action.groupedActions || [action]).map((member) => (
+                          <div key={member.id} className="logistics-print-member">
+                            <strong>{action.groupedActions ? "• " : ""}{member.action}</strong>
+                            {member.notes && <small className="logistics-print-note"><b>Note :</b> {member.notes}</small>}
+                          </div>
+                        ))}
+                      </div>
+                      {action.responsible && <small className="logistics-print-responsible"><b>Responsable(s) :</b> {action.responsible}</small>}
+                      {(action.departure || action.arrival) && <small className="logistics-print-location"><b>Lieu :</b> {action.departure || "—"} → {action.arrival || "—"}</small>}
                     </article>
                   );
                 })}
