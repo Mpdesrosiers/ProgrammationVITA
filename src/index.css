@@ -632,6 +632,10 @@ p {
     font-weight: 600;
   }
 
+  .print-activity .print-activity-name {
+    margin-top: 0;
+  }
+
   .fixed {
     display: none !important;
   }
