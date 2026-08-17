@@ -224,7 +224,6 @@ export default function LogisticsView({ canModify }) {
   const [mineOnly, setMineOnly] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [printScope, setPrintScope] = useState("selected");
-  const [printOrientation, setPrintOrientation] = useState("landscape");
   const [editingAction, setEditingAction] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
@@ -532,16 +531,10 @@ export default function LogisticsView({ canModify }) {
   function printLogistics(scope) {
     setPrintScope(scope);
     document.documentElement.dataset.printMode = "logistics";
-    document.getElementById("logistics-print-page-size")?.remove();
-    const pageStyle = document.createElement("style");
-    pageStyle.id = "logistics-print-page-size";
-    pageStyle.textContent = `@page { size: A4 ${printOrientation}; margin: 8mm; }`;
-    document.head.appendChild(pageStyle);
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         window.print();
-        pageStyle.remove();
         delete document.documentElement.dataset.printMode;
       });
     });
@@ -645,15 +638,6 @@ export default function LogisticsView({ canModify }) {
             <h2 className="mt-1 text-2xl font-semibold">Logistique — ligne du temps</h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            <select
-              value={printOrientation}
-              onChange={(event) => setPrintOrientation(event.target.value)}
-              aria-label="Orientation de l'impression"
-              className="rounded-lg border border-[#8580d9] bg-[#24233a] px-3 py-2 text-sm font-semibold text-[#b9b6ff]"
-            >
-              <option value="landscape">A4 paysage</option>
-              <option value="portrait">A4 portrait</option>
-            </select>
             <div className="flex overflow-hidden rounded-lg border border-[#8580d9] bg-[#24233a]">
               <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Imprimer cette journée</button>
               <button type="button" onClick={() => printLogistics("all")} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Tous les jours</button>
@@ -986,7 +970,10 @@ export default function LogisticsView({ canModify }) {
 
             <div
               className="logistics-print-timeline"
-              style={{ height: `${(printRange / 30) * PRINT_MM_PER_HALF_HOUR}mm` }}
+              style={{
+                "--print-landscape-height": `${(printRange / 30) * PRINT_MM_PER_HALF_HOUR}mm`,
+                "--print-portrait-height": `${(printRange / 30) * 14}mm`,
+              }}
             >
               {Array.from(
                 { length: Math.floor(printRange / 30) + 1 },
