@@ -503,9 +503,10 @@ export default function LogisticsView({ canModify }) {
               <div className="truncate text-sm font-semibold">{members.length > 1 ? "• " : ""}{member.action}</div>
             )}
             {member.notes && <div className="truncate text-xs text-[#e0c98b]" title={member.notes}><span className="text-[#a99562]">Note : </span>{member.notes}</div>}
-            {member.responsible && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Responsable(s) : </span>{member.responsible}</div>}
+            {members.length === 1 && member.responsible && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Responsable(s) : </span>{member.responsible}</div>}
           </div>
         ))}
+        {members.length > 1 && action.responsible && <div className="border-t border-[#3a3b42] pt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Responsable(s) : </span>{action.responsible}</div>}
       </div>
     );
   }
@@ -989,9 +990,10 @@ export default function LogisticsView({ canModify }) {
                         <div key={member.id} className="logistics-print-member">
                           <strong>{action.groupedActions ? "• " : ""}{member.action}</strong>
                           {member.notes && <small className="logistics-print-note">Note : {member.notes}</small>}
-                          {member.responsible && <small>Responsable(s) : {member.responsible}</small>}
+                          {!action.groupedActions && member.responsible && <small>Responsable(s) : {member.responsible}</small>}
                         </div>
                       ))}
+                      {action.groupedActions && action.responsible && <small>Responsable(s) : {action.responsible}</small>}
                       {(action.departure || action.arrival) && <small>Lieu : {action.departure || "—"} → {action.arrival || "—"}</small>}
                     </article>
                   );
