@@ -508,7 +508,6 @@ export default function LogisticsView({ canModify }) {
             )}
             {member.notes && <div className="truncate text-xs text-[#e0c98b]" title={member.notes}><span className="text-[#a99562]">Note : </span>{member.notes}</div>}
             {member.responsible && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Responsable(s) : </span>{member.responsible}</div>}
-            {member.people && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{member.people}</div>}
           </div>
         ))}
       </div>
@@ -1003,7 +1002,6 @@ export default function LogisticsView({ canModify }) {
                           <strong>{action.groupedActions ? "• " : ""}{member.action}</strong>
                           {member.notes && <small className="logistics-print-note">Note : {member.notes}</small>}
                           {member.responsible && <small>Responsable(s) : {member.responsible}</small>}
-                          {member.people && <small>Qui : {member.people}</small>}
                         </div>
                       ))}
                       {(action.departure || action.arrival) && <small>Lieu : {action.departure || "—"} → {action.arrival || "—"}</small>}
