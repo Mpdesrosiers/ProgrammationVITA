@@ -3120,12 +3120,17 @@ function App() {
                             }}
                           >
                             <strong>
-                              {group.activities
-                                .map(
-                                  (activity) =>
-                                    activity.activite
+                              {group.activities.map(
+                                (activity) => (
+                                  <span
+                                    key={activity.id}
+                                    className="print-activity-name"
+                                  >
+                                    {group.activities.length > 1 ? "• " : ""}
+                                    {activity.activite}
+                                  </span>
                                 )
-                                .join(" • ")}
+                              )}
                             </strong>
                             <span>
                               {group.debut}–{group.fin}
