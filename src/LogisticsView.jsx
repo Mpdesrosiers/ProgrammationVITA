@@ -972,7 +972,7 @@ export default function LogisticsView({ canModify }) {
               className="logistics-print-timeline"
               style={{
                 "--print-landscape-height": `${(printRange / 30) * PRINT_MM_PER_HALF_HOUR}mm`,
-                "--print-portrait-height": `${(printRange / 30) * 14}mm`,
+                "--print-portrait-height": `${(printRange / 30) * 12}mm`,
               }}
             >
               {Array.from(
