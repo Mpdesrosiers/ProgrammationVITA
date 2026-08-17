@@ -160,6 +160,23 @@ function minutesToTime(minutes) {
   return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
 }
 
+const PRINT_MINUTES_PER_PAGE = 510;
+const PRINT_MM_PER_HALF_HOUR = 10;
+
+function splitPrintTimeline(timeline) {
+  const duration = timeline.end - timeline.start;
+  if (duration <= PRINT_MINUTES_PER_PAGE) {
+    return [{ start: timeline.start, end: timeline.end }];
+  }
+
+  const firstPageDuration = Math.ceil(duration / 60) * 30;
+  const splitAt = timeline.start + firstPageDuration;
+  return [
+    { start: timeline.start, end: splitAt },
+    { start: splitAt, end: timeline.end },
+  ];
+}
+
 function groupActionsForDisplay(actions) {
   const groups = new Map();
 
@@ -932,33 +949,46 @@ export default function LogisticsView({ canModify }) {
             groupActionsForDisplay(printActions),
             date
           );
-          const printRange = printTimeline.end - printTimeline.start;
+          const printPages = splitPrintTimeline(printTimeline);
 
-          return (
-          <section key={date} className="logistics-print-day">
+          return printPages.map((printPage, pageIndex) => {
+            const printRange = printPage.end - printPage.start;
+            const pageActions = printTimeline.actions.filter(({ start, end, isMilestone }) =>
+              isMilestone
+                ? start >= printPage.start && start < printPage.end
+                : end > printPage.start && start < printPage.end
+            );
+
+            return (
+          <section key={`${date}-${pageIndex}`} className="logistics-print-day">
             <header className="logistics-print-title">
               <div>FESTIVAL VITA 2026 · DÉROULEMENT LOGISTIQUE</div>
-              <h1>{displayDate(date)}</h1>
+              <h1>{displayDate(date)}{printPages.length > 1 ? ` · ${pageIndex + 1}/${printPages.length}` : ""}</h1>
               {responsible && <strong>Responsable : {responsible}</strong>}
               <span>{printActions.length} action{printActions.length !== 1 ? "s" : ""}</span>
             </header>
 
-            <div className="logistics-print-timeline">
+            <div
+              className="logistics-print-timeline"
+              style={{ height: `${(printRange / 30) * PRINT_MM_PER_HALF_HOUR}mm` }}
+            >
               {Array.from(
                 { length: Math.floor(printRange / 30) + 1 },
-                (_, index) => printTimeline.start + index * 30
+                (_, index) => printPage.start + index * 30
               ).map((minute) => (
                 <div
                   key={minute}
                   className={`logistics-print-gridline ${minute % 60 === 0 ? "is-hour" : ""}`}
-                  style={{ top: `${((minute - printTimeline.start) / printRange) * 100}%` }}
+                  style={{ top: `${((minute - printPage.start) / printRange) * 100}%` }}
                 >
                   {minute % 60 === 0 && <time>{minutesToTime(minute)}</time>}
                 </div>
               ))}
 
-              {printTimeline.actions.map(({ action, lane, laneCount, start, end, isMilestone }) => {
+              {pageActions.map(({ action, lane, laneCount, start, end, isMilestone }) => {
                   const [background, border] = colorFor(action.type);
+                  const visibleStart = Math.max(start, printPage.start);
+                  const visibleEnd = Math.min(end, printPage.end);
                   const gap = 0.5;
                   const laneLeftPercent =
                     (lane / laneCount) * 100;
@@ -971,10 +1001,10 @@ export default function LogisticsView({ canModify }) {
                   return (
                     <article
                       key={action.id}
-                      className={`logistics-print-block ${isMilestone ? "is-milestone" : ""} ${isMilestone || end - start < 60 ? "is-compact-print" : ""}`}
+                      className={`logistics-print-block ${isMilestone ? "is-milestone" : ""} ${isMilestone || visibleEnd - visibleStart < 60 ? "is-compact-print" : ""}`}
                       style={{
-                        top: `${((start - printTimeline.start) / printRange) * 100}%`,
-                        height: isMilestone ? undefined : `${((end - start) / printRange) * 100}%`,
+                        top: `${((visibleStart - printPage.start) / printRange) * 100}%`,
+                        height: isMilestone ? undefined : `${((visibleEnd - visibleStart) / printRange) * 100}%`,
                         left: `calc(15mm + ${laneLeftPercent}% - ${laneLeftCorrection}mm + ${gap}mm)`,
                         width: `calc(${laneWidthPercent}% - ${laneWidthCorrection}mm - ${gap * 2}mm)`,
                         borderLeftColor: border,
@@ -1001,7 +1031,8 @@ export default function LogisticsView({ canModify }) {
                 })}
             </div>
           </section>
-          );
+            );
+          });
         })}
       </div>
     </main>
