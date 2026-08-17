@@ -136,6 +136,7 @@ p {
 
   .logistics-print-timeline {
     position: relative;
+    height: var(--print-landscape-height);
     break-inside: avoid;
     page-break-inside: avoid;
     overflow: hidden;
@@ -633,6 +634,10 @@ p {
 }
 
 @media print and (orientation: portrait) {
+  .logistics-print-timeline {
+    height: var(--print-portrait-height);
+  }
+
   .logistics-print-title {
     margin-bottom: 2mm;
     padding-bottom: 2mm;
@@ -694,5 +699,16 @@ p {
 
   .logistics-print-block.is-compact-print .logistics-print-member {
     gap: 0.3mm;
+  }
+
+  .logistics-print-block.is-compact-print .logistics-print-member > strong,
+  .logistics-print-block.is-compact-print .logistics-print-member > small,
+  .logistics-print-block.is-compact-print .logistics-print-responsible,
+  .logistics-print-block.is-compact-print .logistics-print-location {
+    min-width: 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    font-size: 3.8pt;
+    line-height: 1;
   }
 }
