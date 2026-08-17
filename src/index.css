@@ -293,18 +293,85 @@ p {
     font-weight: 700;
   }
 
-  /* Deux déroulements compacts par page lorsque tous les jours sont imprimés. */
-  .logistics-print-document.is-all-days .logistics-print-day {
-    height: 96mm;
-    margin: 0;
-    break-after: auto;
-    page-break-after: auto;
-    overflow: hidden;
+  /* Utilise la largeur du bloc pour garder toutes les informations lisibles. */
+  .logistics-print-block {
+    display: flex;
+    align-items: center;
+    gap: 1mm;
+    padding: 0.6mm 0.8mm;
   }
 
-  .logistics-print-document.is-all-days .logistics-print-day:nth-child(even) {
+  .logistics-print-block-head {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+  }
+
+  .logistics-print-block-head em {
+    margin-left: 0;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .logistics-print-members {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+    gap: 0.8mm;
+  }
+
+  .logistics-print-member {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.5mm;
+  }
+
+  .logistics-print-member + .logistics-print-member {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .logistics-print-member + .logistics-print-member::before {
+    color: #777777;
+    content: "•";
+  }
+
+  .logistics-print-member > strong,
+  .logistics-print-member > small,
+  .logistics-print-responsible,
+  .logistics-print-location {
+    display: inline;
+    margin: 0;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .logistics-print-member > strong {
+    font-size: 5.5pt;
+  }
+
+  .logistics-print-member > small,
+  .logistics-print-responsible,
+  .logistics-print-location {
+    color: #4f4f55;
+    font-size: 4.7pt;
+  }
+
+  .logistics-print-responsible,
+  .logistics-print-location {
+    flex: 0 1 auto;
+  }
+
+  /* Une journée complète par page lorsque tous les jours sont imprimés. */
+  .logistics-print-document.is-all-days .logistics-print-day {
+    height: auto;
+    margin: 0;
     break-after: page;
     page-break-after: always;
+    overflow: visible;
   }
 
   .logistics-print-document.is-all-days .logistics-print-day:last-child {
@@ -338,7 +405,7 @@ p {
   }
 
   .logistics-print-document.is-all-days .logistics-print-timeline {
-    height: 79mm;
+    height: 176mm;
   }
 
   .logistics-print-document.is-all-days .logistics-print-gridline time {
@@ -346,25 +413,25 @@ p {
   }
 
   .logistics-print-document.is-all-days .logistics-print-block {
-    min-height: 3.2mm;
-    padding: 0.55mm 0.7mm;
-    font-size: 4.6pt;
-    line-height: 1.02;
+    min-height: 4mm;
+    padding: 0.6mm 0.8mm;
+    font-size: 6pt;
+    line-height: 1.08;
   }
 
   .logistics-print-document.is-all-days .logistics-print-block-head {
-    gap: 0.6mm;
-    margin-bottom: 0.25mm;
+    gap: 0.8mm;
+    margin-bottom: 0;
   }
 
   .logistics-print-document.is-all-days .logistics-print-block-head span {
-    padding: 0.2mm 0.5mm;
-    font-size: 4pt;
+    padding: 0.3mm 0.6mm;
+    font-size: 5pt;
   }
 
   .logistics-print-document.is-all-days .logistics-print-block-head time,
   .logistics-print-document.is-all-days .logistics-print-block-head em {
-    font-size: 4.2pt;
+    font-size: 5pt;
   }
 
   .logistics-print-document.is-all-days .logistics-print-block > strong {
