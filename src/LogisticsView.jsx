@@ -213,7 +213,6 @@ export default function LogisticsView({ canModify }) {
   const [history, setHistory] = useState([]);
   const [undoing, setUndoing] = useState(false);
   const [syncStates, setSyncStates] = useState({});
-  const [operationalMode, setOperationalMode] = useState(false);
 
   async function load(silent = false) {
     try {
@@ -264,12 +263,9 @@ export default function LogisticsView({ canModify }) {
       .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
   }, [actions, selectedDate, search, status, responsible, mineOnly]);
-  const displayedActions = operationalMode
-    ? visible.filter((action) => action.isMine)
-    : visible;
   const groupedVisibleActions = useMemo(
-    () => groupActionsForDisplay(displayedActions),
-    [displayedActions]
+    () => groupActionsForDisplay(visible),
+    [visible]
   );
   const timeline = useMemo(
     () => buildTimeline(groupedVisibleActions, selectedDate),
@@ -635,7 +631,6 @@ export default function LogisticsView({ canModify }) {
             {canModify && (
               <button type="button" onClick={openCreateEditor} className="rounded-lg bg-[#8580d9] px-4 py-2 text-sm font-semibold text-[#151619] hover:bg-[#9995e3]">+ Ajouter une action</button>
             )}
-            <button type="button" onClick={() => setOperationalMode((current) => !current)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${operationalMode ? "bg-[#62956A] text-white" : "border border-[#3a3b42] bg-[#303137] hover:bg-[#404148]"}`}>Mode opérationnel</button>
             <button onClick={() => load()} className="rounded-lg border border-[#3a3b42] bg-[#303137] px-4 py-2 text-sm hover:bg-[#404148]">Actualiser</button>
           </div>
         </div>
@@ -680,14 +675,7 @@ export default function LogisticsView({ canModify }) {
           </div>
         )}
 
-        {operationalMode && (
-          <div className="mb-5 rounded-lg border border-[#62956A] bg-[#1c2a1f] p-4">
-            <div className="font-semibold text-[#9bd2a0]">Mode opérationnel — Mes actions</div>
-            <div className="mt-1 text-sm text-[#c9c9ce]">Vue simplifiée pour téléphone, limitée aux actions qui te sont assignées dans la colonne « Qui ».</div>
-          </div>
-        )}
-
-        {displayedActions.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="rounded-lg border border-[#303137] bg-[#1b1c20] p-6 text-center text-[#a1a1a8]">Aucune action pour ces filtres.</div>
         ) : (
           <div className="w-full rounded-xl border border-[#303137] bg-[#18191d]">
