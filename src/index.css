@@ -293,26 +293,26 @@ p {
     font-weight: 700;
   }
 
-  /* Utilise la largeur du bloc pour garder toutes les informations lisibles. */
-  .logistics-print-block {
+  /* Les blocs courts utilisent la largeur; les autres restent en liste verticale. */
+  .logistics-print-block.is-compact-print {
     display: flex;
     align-items: center;
     gap: 1mm;
     padding: 0.6mm 0.8mm;
   }
 
-  .logistics-print-block-head {
+  .logistics-print-block.is-compact-print .logistics-print-block-head {
     flex: 0 0 auto;
     margin-bottom: 0;
   }
 
-  .logistics-print-block-head em {
+  .logistics-print-block.is-compact-print .logistics-print-block-head em {
     margin-left: 0;
     overflow: visible;
     text-overflow: clip;
   }
 
-  .logistics-print-members {
+  .logistics-print-block.is-compact-print .logistics-print-members {
     display: flex;
     flex: 1 1 auto;
     min-width: 0;
@@ -320,28 +320,28 @@ p {
     gap: 0.8mm;
   }
 
-  .logistics-print-member {
+  .logistics-print-block.is-compact-print .logistics-print-member {
     display: flex;
     min-width: 0;
     align-items: center;
     gap: 0.5mm;
   }
 
-  .logistics-print-member + .logistics-print-member {
+  .logistics-print-block.is-compact-print .logistics-print-member + .logistics-print-member {
     margin-top: 0;
     border-top: 0;
     padding-top: 0;
   }
 
-  .logistics-print-member + .logistics-print-member::before {
+  .logistics-print-block.is-compact-print .logistics-print-member + .logistics-print-member::before {
     color: #777777;
     content: "•";
   }
 
-  .logistics-print-member > strong,
-  .logistics-print-member > small,
-  .logistics-print-responsible,
-  .logistics-print-location {
+  .logistics-print-block.is-compact-print .logistics-print-member > strong,
+  .logistics-print-block.is-compact-print .logistics-print-member > small,
+  .logistics-print-block.is-compact-print .logistics-print-responsible,
+  .logistics-print-block.is-compact-print .logistics-print-location {
     display: inline;
     margin: 0;
     overflow: visible;
@@ -349,19 +349,19 @@ p {
     white-space: normal;
   }
 
-  .logistics-print-member > strong {
+  .logistics-print-block.is-compact-print .logistics-print-member > strong {
     font-size: 5.5pt;
   }
 
-  .logistics-print-member > small,
-  .logistics-print-responsible,
-  .logistics-print-location {
+  .logistics-print-block.is-compact-print .logistics-print-member > small,
+  .logistics-print-block.is-compact-print .logistics-print-responsible,
+  .logistics-print-block.is-compact-print .logistics-print-location {
     color: #4f4f55;
     font-size: 4.7pt;
   }
 
-  .logistics-print-responsible,
-  .logistics-print-location {
+  .logistics-print-block.is-compact-print .logistics-print-responsible,
+  .logistics-print-block.is-compact-print .logistics-print-location {
     flex: 0 1 auto;
   }
 
@@ -421,6 +421,10 @@ p {
 
   .logistics-print-document.is-all-days .logistics-print-block-head {
     gap: 0.8mm;
+    margin-bottom: 0.6mm;
+  }
+
+  .logistics-print-document.is-all-days .logistics-print-block.is-compact-print .logistics-print-block-head {
     margin-bottom: 0;
   }
 
