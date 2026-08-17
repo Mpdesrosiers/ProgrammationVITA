@@ -161,7 +161,7 @@ function minutesToTime(minutes) {
 }
 
 const PRINT_MINUTES_PER_PAGE = 510;
-const PRINT_MM_PER_HALF_HOUR = 10;
+const PRINT_MM_PER_HALF_HOUR = 9;
 
 function splitPrintTimeline(timeline) {
   const duration = timeline.end - timeline.start;
