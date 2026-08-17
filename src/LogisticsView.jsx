@@ -1,12 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const typeColors = [
-  ["#7B9CC7", "#4F709F"],
-  ["#B7A2C9", "#80668F"],
-  ["#D9A3B8", "#A96F89"],
-  ["#D9AD7C", "#A97C4E"],
-  ["#A8C9A5", "#648C61"],
-  ["#8EACD2", "#6084B4"],
+const typeColors = {
+  transport: ["#8EACD2", "#4F709F"],
+  livraison: ["#E6B566", "#A66E20"],
+  montage: ["#A8C9A5", "#5F8A5B"],
+  operation: ["#B7A2C9", "#755B8B"],
+  demontage: ["#D9A3B8", "#A65F7A"],
+  arrivee: ["#75C2B4", "#368276"],
+  depart: ["#D8C878", "#96852C"],
+  empty: ["#A7A8AD", "#67686E"],
+  other: ["#9EA5B3", "#626A78"],
+};
+const typeLegend = [
+  ["Transport", "transport"],
+  ["Livraison", "livraison"],
+  ["Montage", "montage"],
+  ["Opération", "operation"],
+  ["Démontage", "demontage"],
+  ["Arrivée", "arrivee"],
+  ["Départ", "depart"],
+  ["Sans type", "empty"],
 ];
 
 const TIMELINE_PIXELS_PER_MINUTE = 3;
@@ -17,11 +30,13 @@ const LOGISTICS_COLUMNS = {
 };
 
 function colorFor(value) {
-  const hash = [...(value || "Autre")].reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0
-  );
-  return typeColors[hash % typeColors.length];
+  const normalized = (value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (!normalized) return typeColors.empty;
+  return typeColors[normalized] || typeColors.other;
 }
 
 function displayDate(value) {
@@ -638,6 +653,15 @@ export default function LogisticsView({ canModify }) {
           <button type="button" onClick={() => setMineOnly((current) => !current)} className={"rounded-lg px-4 py-2.5 text-sm font-semibold " + (mineOnly ? "bg-[#8580d9] text-[#151619]" : "border border-[#3a3b42] bg-[#303137] text-white hover:bg-[#404148]")}>Mes tâches</button>
         </div>
 
+        <div className="mb-5 flex flex-wrap gap-2 text-xs">
+          {typeLegend.map(([label, key]) => (
+            <span key={key} className="flex items-center gap-1.5 rounded-full bg-[#202126] px-2.5 py-1">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: typeColors[key][1] }} />
+              {label}
+            </span>
+          ))}
+        </div>
+
         {responsible && (
           <div className="mb-4 text-sm text-[#b9b6ff]">
             L’impression contiendra seulement les actions de <strong>{responsible}</strong>.
@@ -744,7 +768,7 @@ export default function LogisticsView({ canModify }) {
                         <div className="flex min-w-0 items-start gap-2 p-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
-                              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>Jalon · {action.type || "Logistique"}</span>
+                              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>Jalon · {action.type || "Sans type"}</span>
                               <span className="text-xs font-semibold text-[#b9b6ff]">{action.start.time}</span>
                             </div>
                             {renderActionList(action)}
@@ -792,7 +816,7 @@ export default function LogisticsView({ canModify }) {
                     <div className="flex h-full min-w-0 items-start gap-2 p-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-2">
-                          <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
+                          <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Sans type"}</span>
                           <span className="truncate text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
                         </div>
                         {renderActionList(action)}
@@ -969,7 +993,7 @@ export default function LogisticsView({ canModify }) {
                       }}
                     >
                       <div className="logistics-print-block-head">
-                        <span style={{ backgroundColor: background }}>{isMilestone ? "Jalon · " : ""}{action.type || "Logistique"}</span>
+                        <span style={{ backgroundColor: background }}>{isMilestone ? "Jalon · " : ""}{action.type || "Sans type"}</span>
                         <time>{action.start.time}{isMilestone ? "" : `–${action.end?.time || minutesToTime(end)}`}</time>
                         <em>{action.status || "Sans statut"}</em>
                       </div>
