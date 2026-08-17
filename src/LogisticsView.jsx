@@ -224,6 +224,7 @@ export default function LogisticsView({ canModify }) {
   const [mineOnly, setMineOnly] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [printScope, setPrintScope] = useState("selected");
+  const [timelineZoom, setTimelineZoom] = useState(100);
   const [editingAction, setEditingAction] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
@@ -638,6 +639,36 @@ export default function LogisticsView({ canModify }) {
             <h2 className="mt-1 text-2xl font-semibold">Logistique — ligne du temps</h2>
           </div>
           <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-[#303137] bg-[#1b1c20] px-2 py-1">
+              <button
+                type="button"
+                onClick={() => setTimelineZoom((current) => Math.max(20, current - 10))}
+                className="rounded px-2 py-1 text-base text-[#c9c9ce] hover:bg-[#303137] hover:text-white"
+                aria-label="Dézoomer la logistique"
+              >−</button>
+              <input
+                type="range"
+                min="20"
+                max="100"
+                step="5"
+                value={timelineZoom}
+                onChange={(event) => setTimelineZoom(Number(event.target.value))}
+                className="w-20 accent-[#8580d9]"
+                aria-label="Zoom de la logistique"
+              />
+              <button
+                type="button"
+                onClick={() => setTimelineZoom((current) => Math.min(100, current + 10))}
+                className="rounded px-2 py-1 text-base text-[#c9c9ce] hover:bg-[#303137] hover:text-white"
+                aria-label="Zoomer la logistique"
+              >+</button>
+              <span className="w-9 text-right text-xs text-[#a1a1a8]">{timelineZoom}%</span>
+              <button
+                type="button"
+                onClick={() => setTimelineZoom(20)}
+                className="ml-1 rounded-md bg-[#303137] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#404148]"
+              >Vue d’ensemble</button>
+            </div>
             <div className="flex overflow-hidden rounded-lg border border-[#8580d9] bg-[#24233a]">
               <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Imprimer cette journée</button>
               <button type="button" onClick={() => printLogistics("all")} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Tous les jours</button>
@@ -700,6 +731,8 @@ export default function LogisticsView({ canModify }) {
             <div
               className="relative w-full"
               style={{
+                zoom: timelineZoom / 100,
+                width: `${10000 / timelineZoom}%`,
                 height:
                   (timeline.end - timeline.start) *
                     TIMELINE_PIXELS_PER_MINUTE +
