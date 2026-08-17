@@ -53,6 +53,7 @@ p {
 }
 
 @page {
+  size: A4;
   margin: 8mm;
 }
 
@@ -629,5 +630,70 @@ p {
 
   .fixed {
     display: none !important;
+  }
+}
+
+@media print and (orientation: portrait) {
+  .logistics-print-title {
+    margin-bottom: 2mm;
+    padding-bottom: 2mm;
+  }
+
+  .logistics-print-title h1 {
+    font-size: 14pt;
+  }
+
+  .logistics-print-timeline::before {
+    left: 13mm;
+  }
+
+  .logistics-print-gridline time {
+    left: 0.8mm;
+    font-size: 5.5pt;
+  }
+
+  .logistics-print-block {
+    padding: 0.7mm;
+    font-size: 5.2pt;
+    line-height: 1.06;
+  }
+
+  .logistics-print-block-head {
+    flex-wrap: wrap;
+    gap: 0.45mm;
+    margin-bottom: 0.35mm;
+  }
+
+  .logistics-print-block-head span {
+    padding: 0.25mm 0.45mm;
+    font-size: 4.4pt;
+  }
+
+  .logistics-print-block-head time,
+  .logistics-print-block-head em {
+    font-size: 4.5pt;
+  }
+
+  .logistics-print-member > strong {
+    font-size: 5.4pt;
+  }
+
+  .logistics-print-member > small,
+  .logistics-print-responsible,
+  .logistics-print-location {
+    font-size: 4.4pt;
+  }
+
+  .logistics-print-block.is-compact-print {
+    gap: 0.45mm;
+    padding: 0.45mm 0.55mm;
+  }
+
+  .logistics-print-block.is-compact-print .logistics-print-members {
+    gap: 0.4mm;
+  }
+
+  .logistics-print-block.is-compact-print .logistics-print-member {
+    gap: 0.3mm;
   }
 }
