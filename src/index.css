@@ -264,6 +264,35 @@ p {
     font-weight: 700;
   }
 
+  .logistics-print-member + .logistics-print-member {
+    margin-top: 0.6mm;
+    border-top: 0.15mm solid #b7b7bc;
+    padding-top: 0.5mm;
+  }
+
+  .logistics-print-member > strong,
+  .logistics-print-member > small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logistics-print-member > strong {
+    font-size: 6.5pt;
+  }
+
+  .logistics-print-member > small {
+    margin-top: 0.3mm;
+    color: #4f4f55;
+    font-size: 5pt;
+  }
+
+  .logistics-print-member > .logistics-print-note {
+    color: #725a18;
+    font-weight: 700;
+  }
+
   /* Deux déroulements compacts par page lorsque tous les jours sont imprimés. */
   .logistics-print-document.is-all-days .logistics-print-day {
     height: 96mm;
