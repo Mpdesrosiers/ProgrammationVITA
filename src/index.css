@@ -135,7 +135,6 @@ p {
 
   .logistics-print-timeline {
     position: relative;
-    height: 170mm;
     overflow: hidden;
     border: 0.3mm solid #777777;
     background: #ffffff;
@@ -404,10 +403,6 @@ p {
     font-size: 6pt;
   }
 
-  .logistics-print-document.is-all-days .logistics-print-timeline {
-    height: 176mm;
-  }
-
   .logistics-print-document.is-all-days .logistics-print-gridline time {
     font-size: 5pt;
   }
@@ -454,10 +449,6 @@ p {
   .logistics-print-document.is-single-day .logistics-print-title {
     margin-bottom: 2mm;
     padding-bottom: 2mm;
-  }
-
-  .logistics-print-document.is-single-day .logistics-print-timeline {
-    height: 176mm;
   }
 
   .logistics-print-table {
