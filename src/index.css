@@ -53,7 +53,6 @@ p {
 }
 
 @page {
-  size: landscape;
   margin: 8mm;
 }
 
@@ -88,7 +87,9 @@ p {
 
   .logistics-print-day {
     break-after: page;
+    break-inside: avoid;
     page-break-after: always;
+    page-break-inside: avoid;
     color: #111111;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
@@ -135,6 +136,8 @@ p {
 
   .logistics-print-timeline {
     position: relative;
+    break-inside: avoid;
+    page-break-inside: avoid;
     overflow: hidden;
     border: 0.3mm solid #777777;
     background: #ffffff;
