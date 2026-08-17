@@ -145,6 +145,40 @@ function minutesToTime(minutes) {
   return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
 }
 
+function groupActionsForDisplay(actions) {
+  const groups = new Map();
+
+  actions.forEach((action) => {
+    const key = JSON.stringify([
+      action.start?.date || "",
+      action.start?.time || "",
+      action.end?.date || "",
+      action.end?.time || "",
+      action.type || "",
+      action.responsible || "",
+      action.departure || "",
+      action.arrival || "",
+      action.status || "",
+    ]);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(action);
+  });
+
+  return [...groups.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    const first = group[0];
+    return {
+      ...first,
+      id: `group-${group.map((action) => action.id).join("-")}`,
+      groupedActions: group,
+      action: group.map((action) => action.action).join(" · "),
+      people: [...new Set(group.map((action) => action.people).filter(Boolean))].join(", "),
+      notes: group.map((action) => action.notes).filter(Boolean).join(" · "),
+      isMine: group.some((action) => action.isMine),
+    };
+  });
+}
+
 export default function LogisticsView({ canModify }) {
   const [actions, setActions] = useState([]);
   const [columnOptions, setColumnOptions] = useState({});
@@ -215,16 +249,17 @@ export default function LogisticsView({ canModify }) {
       .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
   }, [actions, selectedDate, search, status, responsible, mineOnly]);
-  const timeline = useMemo(
-    () => buildTimeline(
-      operationalMode ? visible.filter((action) => action.isMine) : visible,
-      selectedDate
-    ),
-    [visible, selectedDate, operationalMode]
-  );
   const displayedActions = operationalMode
     ? visible.filter((action) => action.isMine)
     : visible;
+  const groupedVisibleActions = useMemo(
+    () => groupActionsForDisplay(displayedActions),
+    [displayedActions]
+  );
+  const timeline = useMemo(
+    () => buildTimeline(groupedVisibleActions, selectedDate),
+    [groupedVisibleActions, selectedDate]
+  );
 
   function addHistory(label, before) {
     setHistory((current) => [
@@ -443,6 +478,25 @@ export default function LogisticsView({ canModify }) {
     } finally {
       setEditSaving(false);
     }
+  }
+
+  function renderActionList(action) {
+    const members = action.groupedActions || [action];
+    return (
+      <div className="mt-1 space-y-1">
+        {members.map((member) => (
+          <div key={member.id} className={members.length > 1 ? "border-t border-[#3a3b42] pt-1 first:border-t-0 first:pt-0" : ""}>
+            {canModify ? (
+              <button type="button" onClick={(event) => { event.stopPropagation(); openEditor(member); }} className="block max-w-full truncate text-left text-sm font-semibold hover:text-[#b9b6ff]">{members.length > 1 ? "• " : ""}{member.action}</button>
+            ) : (
+              <div className="truncate text-sm font-semibold">{members.length > 1 ? "• " : ""}{member.action}</div>
+            )}
+            {member.notes && <div className="truncate text-xs text-[#e0c98b]" title={member.notes}><span className="text-[#a99562]">Note : </span>{member.notes}</div>}
+            {(member.people || member.responsible) && <div className="truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{member.people || member.responsible}</div>}
+          </div>
+        ))}
+      </div>
+    );
   }
 
   function printLogistics(scope) {
@@ -678,13 +732,13 @@ export default function LogisticsView({ canModify }) {
                       />
                       <article
                         title={`${action.start.time} · ${action.action}`}
-                        role={canModify ? "button" : undefined}
-                        tabIndex={canModify ? 0 : undefined}
-                        onClick={() => openEditor(action)}
+                        role={canModify && !action.groupedActions ? "button" : undefined}
+                        tabIndex={canModify && !action.groupedActions ? 0 : undefined}
+                        onClick={() => { if (!action.groupedActions) openEditor(action); }}
                         onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") openEditor(action);
+                          if (!action.groupedActions && (event.key === "Enter" || event.key === " ")) openEditor(action);
                         }}
-                        className={`absolute left-3 right-0 top-0 min-w-0 -translate-y-1/2 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg ${canModify ? "cursor-pointer hover:bg-[#2d2e34]" : ""}`}
+                        className={`absolute left-3 right-0 top-0 min-w-0 -translate-y-1/2 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg ${canModify && !action.groupedActions ? "cursor-pointer hover:bg-[#2d2e34]" : ""}`}
                         style={{ borderLeftColor: border }}
                       >
                         <div className="flex min-w-0 items-start gap-2 p-3">
@@ -693,13 +747,11 @@ export default function LogisticsView({ canModify }) {
                               <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>Jalon · {action.type || "Logistique"}</span>
                               <span className="text-xs font-semibold text-[#b9b6ff]">{action.start.time}</span>
                             </div>
-                            <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
-                            {syncStates[action.id] && <div className={`mt-1 text-[11px] font-semibold ${syncStates[action.id].state === "error" ? "text-[#ff8b9a]" : syncStates[action.id].state === "saving" ? "text-[#e0c98b]" : "text-[#9bd2a0]"}`}>{syncStates[action.id].state === "saving" ? "Sauvegarde…" : syncStates[action.id].state === "error" ? "Erreur de synchronisation" : "✓ Synchronisé avec Monday"}</div>}
-                            {action.notes && <div className="mt-1 truncate text-xs text-[#e0c98b]" title={action.notes}><span className="text-[#a99562]">Note : </span>{action.notes}</div>}
-                            {(action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
+                            {renderActionList(action)}
+                            {!action.groupedActions && syncStates[action.id] && <div className={`mt-1 text-[11px] font-semibold ${syncStates[action.id].state === "error" ? "text-[#ff8b9a]" : syncStates[action.id].state === "saving" ? "text-[#e0c98b]" : "text-[#9bd2a0]"}`}>{syncStates[action.id].state === "saving" ? "Sauvegarde…" : syncStates[action.id].state === "error" ? "Erreur de synchronisation" : "✓ Synchronisé avec Monday"}</div>}
                             {(action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
                           </div>
-                          {canModify ? (
+                          {canModify && !action.groupedActions ? (
                             <select aria-label={`Statut de ${action.action}`} onClick={(event) => event.stopPropagation()} disabled={savingId === action.id} value={action.status} onChange={(event) => changeStatus(action, event.target.value)} className="max-w-[105px] shrink-0 rounded border border-[#3a3b42] bg-[#151619] px-1.5 py-1 text-[11px] font-semibold">
                               <option value="">Sans statut</option>{statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                             </select>
@@ -716,13 +768,13 @@ export default function LogisticsView({ canModify }) {
                   <article
                     key={action.id}
                     title={`${action.start.time}–${action.end?.time || minutesToTime(end)} · ${action.action}`}
-                    role={canModify ? "button" : undefined}
-                    tabIndex={canModify ? 0 : undefined}
-                    onClick={() => openEditor(action)}
+                    role={canModify && !action.groupedActions ? "button" : undefined}
+                    tabIndex={canModify && !action.groupedActions ? 0 : undefined}
+                    onClick={() => { if (!action.groupedActions) openEditor(action); }}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") openEditor(action);
+                      if (!action.groupedActions && (event.key === "Enter" || event.key === " ")) openEditor(action);
                     }}
-                    className={`absolute min-w-0 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg ${canModify ? "cursor-pointer hover:bg-[#2d2e34]" : ""}`}
+                    className={`absolute min-w-0 overflow-hidden rounded-lg border-l-[5px] bg-[#25262b] shadow-lg ${canModify && !action.groupedActions ? "cursor-pointer hover:bg-[#2d2e34]" : ""}`}
                     style={{
                       top:
                         (start - timeline.start) *
@@ -743,13 +795,11 @@ export default function LogisticsView({ canModify }) {
                           <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-[#202124]" style={{ backgroundColor: background }}>{action.type || "Logistique"}</span>
                           <span className="truncate text-[11px] font-semibold text-[#b9b6ff]">{action.start.time}–{action.end?.time || minutesToTime(end)}</span>
                         </div>
-                        <h3 className="mt-1 truncate text-sm font-semibold">{action.action}</h3>
-                        {syncStates[action.id] && <div className={`mt-1 text-[11px] font-semibold ${syncStates[action.id].state === "error" ? "text-[#ff8b9a]" : syncStates[action.id].state === "saving" ? "text-[#e0c98b]" : "text-[#9bd2a0]"}`}>{syncStates[action.id].state === "saving" ? "Sauvegarde…" : syncStates[action.id].state === "error" ? "Erreur de synchronisation" : "✓ Synchronisé avec Monday"}</div>}
-                        {action.notes && <div className="mt-1 truncate text-xs text-[#e0c98b]" title={action.notes}><span className="text-[#a99562]">Note : </span>{action.notes}</div>}
-                        {duration >= 30 && (action.people || action.responsible) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Qui : </span>{action.people || action.responsible}</div>}
+                        {renderActionList(action)}
+                        {!action.groupedActions && syncStates[action.id] && <div className={`mt-1 text-[11px] font-semibold ${syncStates[action.id].state === "error" ? "text-[#ff8b9a]" : syncStates[action.id].state === "saving" ? "text-[#e0c98b]" : "text-[#9bd2a0]"}`}>{syncStates[action.id].state === "saving" ? "Sauvegarde…" : syncStates[action.id].state === "error" ? "Erreur de synchronisation" : "✓ Synchronisé avec Monday"}</div>}
                         {duration >= 45 && (action.departure || action.arrival) && <div className="mt-1 truncate text-xs text-[#c9c9ce]"><span className="text-[#85858c]">Lieu : </span>{action.departure || "—"} → {action.arrival || "—"}</div>}
                       </div>
-                      {canModify ? (
+                      {canModify && !action.groupedActions ? (
                         <select
                           aria-label={`Statut de ${action.action}`}
                           onClick={(event) => event.stopPropagation()}
@@ -865,7 +915,10 @@ export default function LogisticsView({ canModify }) {
           : dates.filter((date) => date === selectedDate)
         ).map((date) => {
           const printActions = actionsForDate(date);
-          const printTimeline = buildTimeline(printActions, date);
+          const printTimeline = buildTimeline(
+            groupActionsForDisplay(printActions),
+            date
+          );
           const printRange = printTimeline.end - printTimeline.start;
 
           return (
@@ -920,9 +973,13 @@ export default function LogisticsView({ canModify }) {
                         <time>{action.start.time}{isMilestone ? "" : `–${action.end?.time || minutesToTime(end)}`}</time>
                         <em>{action.status || "Sans statut"}</em>
                       </div>
-                      <strong>{action.action}</strong>
-                      {action.notes && <small className="logistics-print-note">Note : {action.notes}</small>}
-                      {(action.people || action.responsible) && <small>Qui : {action.people || action.responsible}</small>}
+                      {(action.groupedActions || [action]).map((member) => (
+                        <div key={member.id} className="logistics-print-member">
+                          <strong>{action.groupedActions ? "• " : ""}{member.action}</strong>
+                          {member.notes && <small className="logistics-print-note">Note : {member.notes}</small>}
+                          {(member.people || member.responsible) && <small>Qui : {member.people || member.responsible}</small>}
+                        </div>
+                      ))}
                       {(action.departure || action.arrival) && <small>Lieu : {action.departure || "—"} → {action.arrival || "—"}</small>}
                     </article>
                   );
