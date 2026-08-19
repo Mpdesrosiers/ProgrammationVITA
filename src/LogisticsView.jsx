@@ -29,6 +29,35 @@ const LOGISTICS_COLUMNS = {
   type: "color_mm66qgbk",
 };
 
+const CO_MEMBERS = [
+  "Charlotte",
+  "Eunice",
+  "Gabrielle",
+  "MP",
+  "Manuel",
+  "Samy",
+  "Téhau",
+  "Simon",
+  "Marie-Josée",
+  "Mathieu",
+  "Barbara",
+  "Élo",
+];
+
+function responsibleNames(action) {
+  return (action.responsible || "")
+    .split(/[,;]/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function matchesResponsible(action, selectedResponsible) {
+  if (!selectedResponsible) return true;
+  const names = responsibleNames(action);
+  return names.includes(selectedResponsible) ||
+    (CO_MEMBERS.includes(selectedResponsible) && names.includes("CO"));
+}
+
 function colorFor(value) {
   const normalized = (value || "")
     .trim()
@@ -265,7 +294,10 @@ export default function LogisticsView({ canModify }) {
     [actions]
   );
   const responsibles = useMemo(
-    () => [...new Set(actions.flatMap((action) => action.responsible.split(",").map((name) => name.trim())).filter(Boolean))].sort(),
+    () => [...new Set([
+      ...actions.flatMap(responsibleNames).filter((name) => name !== "CO"),
+      ...CO_MEMBERS,
+    ])].sort((a, b) => a.localeCompare(b, "fr")),
     [actions]
   );
   const responsibleOptions = columnOptions[LOGISTICS_COLUMNS.responsible] || [];
@@ -277,7 +309,7 @@ export default function LogisticsView({ canModify }) {
       .filter((action) => action.start.date === selectedDate)
       .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible} ${action.notes}`.toLowerCase().includes(query))
       .filter((action) => !status || action.status === status)
-      .filter((action) => !responsible || action.responsible.split(",").map((name) => name.trim()).includes(responsible))
+      .filter((action) => matchesResponsible(action, responsible))
       .filter((action) => !mineOnly || action.isMine)
       .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
   }, [actions, selectedDate, search, status, responsible, mineOnly]);
@@ -601,14 +633,7 @@ export default function LogisticsView({ canModify }) {
   function actionsForDate(date) {
     return actions
       .filter((action) => action.start.date === date)
-      .filter(
-        (action) =>
-          !responsible ||
-          action.responsible
-            .split(",")
-            .map((name) => name.trim())
-            .includes(responsible)
-      )
+      .filter((action) => matchesResponsible(action, responsible))
       .sort((a, b) =>
         `${a.start.time}-${a.action}`.localeCompare(
           `${b.start.time}-${b.action}`
