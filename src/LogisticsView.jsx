@@ -316,21 +316,27 @@ export default function LogisticsView({ canModify }) {
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return actions
-      .filter((action) => action.start.date === selectedDate)
+      .filter((action) => isPreparation
+        ? action.start.date < FESTIVAL_START_DATE
+        : action.start.date === selectedDate)
       .filter((action) => !query || `${action.action} ${action.departure} ${action.arrival} ${action.people} ${action.responsible} ${action.notes}`.toLowerCase().includes(query))
       .filter((action) => !status || action.status === status)
       .filter((action) => matchesResponsible(action, responsible))
       .filter((action) => !mineOnly || action.isMine)
-      .sort((a, b) => `${a.start.time}-${a.action}`.localeCompare(`${b.start.time}-${b.action}`));
-  }, [actions, selectedDate, search, status, responsible, mineOnly]);
-  const groupedVisibleActions = useMemo(
-    () => groupActionsForDisplay(visible),
-    [visible]
-  );
-  const timeline = useMemo(
-    () => buildTimeline(groupedVisibleActions, selectedDate),
-    [groupedVisibleActions, selectedDate]
-  );
+      .sort((a, b) => `${a.start.date}-${a.start.time}-${a.action}`.localeCompare(`${b.start.date}-${b.start.time}-${b.action}`));
+  }, [actions, selectedDate, isPreparation, search, status, responsible, mineOnly]);
+  const timelineSections = useMemo(() => {
+    const sectionDates = [...new Set(visible.map((action) => action.start.date))].sort();
+    return sectionDates.map((date) => ({
+      date,
+      timeline: buildTimeline(
+        groupActionsForDisplay(
+          visible.filter((action) => action.start.date === date)
+        ),
+        date
+      ),
+    }));
+  }, [visible]);
 
   function addHistory(label, before) {
     setHistory((current) => [
@@ -693,7 +699,7 @@ export default function LogisticsView({ canModify }) {
               >Vue d’ensemble</button>
             </div>
             <div className="flex overflow-hidden rounded-lg border border-[#8580d9] bg-[#24233a]">
-              <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Imprimer cette journée</button>
+              <button type="button" onClick={() => printLogistics("selected")} className="px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">{isPreparation ? "Imprimer la préparation" : "Imprimer cette journée"}</button>
               <button type="button" onClick={() => printLogistics("all")} className="border-l border-[#8580d9] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d]">Tous les jours</button>
             </div>
             <button type="button" onClick={exportCsv} disabled={actions.length === 0} className="rounded-lg border border-[#8580d9] bg-[#24233a] px-3 py-2 text-sm font-semibold text-[#b9b6ff] hover:bg-[#302e4d] disabled:cursor-not-allowed disabled:opacity-40">Exporter tout en CSV</button>
@@ -722,24 +728,6 @@ export default function LogisticsView({ canModify }) {
             <button key={date} onClick={() => setSelectedDate(date)} className={"shrink-0 rounded-lg px-4 py-2 text-sm font-semibold capitalize " + (date === selectedDate ? "bg-[#8580d9] text-[#151619]" : "bg-[#303137] hover:bg-[#404148]")}>{displayDate(date)}</button>
           ))}
         </div>
-
-        {isPreparation && (
-          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-[#303137] bg-[#1b1c20] px-4 py-3">
-            <label htmlFor="preparation-date" className="text-sm font-semibold text-[#b9b6ff]">
-              Journée de préparation
-            </label>
-            <select
-              id="preparation-date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-              className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm capitalize text-white"
-            >
-              {preparationDates.map((date) => (
-                <option key={date} value={date}>{displayDate(date)}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <div className="mb-7 grid gap-3 rounded-xl border border-[#303137] bg-[#1b1c20] p-4 md:grid-cols-[1fr_190px_190px_auto]">
           <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une action, un lieu…" className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm outline-none focus:border-[#8580d9]" />
@@ -778,6 +766,14 @@ export default function LogisticsView({ canModify }) {
         {visible.length === 0 ? (
           <div className="rounded-lg border border-[#303137] bg-[#1b1c20] p-6 text-center text-[#a1a1a8]">Aucune action pour ces filtres.</div>
         ) : (
+          <div className="space-y-6">
+          {timelineSections.map(({ date, timeline }) => (
+          <section key={date}>
+            {isPreparation && (
+              <h3 className="mb-3 rounded-lg border border-[#303137] bg-[#202126] px-4 py-3 text-lg font-semibold capitalize text-[#b9b6ff]">
+                {displayDate(date)}
+              </h3>
+            )}
           <div className="w-full rounded-xl border border-[#303137] bg-[#18191d]">
             <div
               className="relative w-full"
@@ -933,6 +929,9 @@ export default function LogisticsView({ canModify }) {
               })}
             </div>
           </div>
+          </section>
+          ))}
+          </div>
         )}
       </div>
 
@@ -1026,6 +1025,8 @@ export default function LogisticsView({ canModify }) {
       <div className={`logistics-print-document ${printScope === "all" ? "is-all-days" : "is-single-day"}`}>
         {(printScope === "all"
           ? dates
+          : isPreparation
+          ? preparationDates
           : dates.filter((date) => date === selectedDate)
         ).map((date) => {
           const printActions = actionsForDate(date);
