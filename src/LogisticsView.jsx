@@ -23,6 +23,7 @@ const typeLegend = [
 ];
 
 const TIMELINE_PIXELS_PER_MINUTE = 3;
+const FESTIVAL_START_DATE = "2026-09-17";
 const LOGISTICS_COLUMNS = {
   responsible: "dropdown_mm668yr",
   status: "color_mm6622h",
@@ -293,6 +294,15 @@ export default function LogisticsView({ canModify }) {
     () => [...new Set(actions.map((action) => action.start.date))].sort(),
     [actions]
   );
+  const preparationDates = useMemo(
+    () => dates.filter((date) => date < FESTIVAL_START_DATE),
+    [dates]
+  );
+  const festivalDates = useMemo(
+    () => dates.filter((date) => date >= FESTIVAL_START_DATE),
+    [dates]
+  );
+  const isPreparation = Boolean(selectedDate && selectedDate < FESTIVAL_START_DATE);
   const responsibles = useMemo(
     () => [...new Set([
       ...actions.flatMap(responsibleNames).filter((name) => name !== "CO"),
@@ -695,10 +705,41 @@ export default function LogisticsView({ canModify }) {
         </div>
 
         <div className="mb-5 flex gap-2 overflow-x-auto pb-2">
-          {dates.map((date) => (
+          {preparationDates.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedDate((current) =>
+                current && current < FESTIVAL_START_DATE
+                  ? current
+                  : preparationDates.at(-1)
+              )}
+              className={"shrink-0 rounded-lg px-4 py-2 text-sm font-semibold " + (isPreparation ? "bg-[#8580d9] text-[#151619]" : "bg-[#303137] hover:bg-[#404148]")}
+            >
+              Préparation
+            </button>
+          )}
+          {festivalDates.map((date) => (
             <button key={date} onClick={() => setSelectedDate(date)} className={"shrink-0 rounded-lg px-4 py-2 text-sm font-semibold capitalize " + (date === selectedDate ? "bg-[#8580d9] text-[#151619]" : "bg-[#303137] hover:bg-[#404148]")}>{displayDate(date)}</button>
           ))}
         </div>
+
+        {isPreparation && (
+          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-[#303137] bg-[#1b1c20] px-4 py-3">
+            <label htmlFor="preparation-date" className="text-sm font-semibold text-[#b9b6ff]">
+              Journée de préparation
+            </label>
+            <select
+              id="preparation-date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2 text-sm capitalize text-white"
+            >
+              {preparationDates.map((date) => (
+                <option key={date} value={date}>{displayDate(date)}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="mb-7 grid gap-3 rounded-xl border border-[#303137] bg-[#1b1c20] p-4 md:grid-cols-[1fr_190px_190px_auto]">
           <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une action, un lieu…" className="rounded-lg border border-[#3a3b42] bg-[#151619] px-3 py-2.5 text-sm outline-none focus:border-[#8580d9]" />
