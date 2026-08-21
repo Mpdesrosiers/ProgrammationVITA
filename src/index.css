@@ -456,6 +456,43 @@ p {
     padding-bottom: 2mm;
   }
 
+  /* Les petites journées de préparation se suivent sur une même feuille. */
+  .logistics-print-document .logistics-print-day.is-preparation {
+    margin-bottom: 5mm;
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .logistics-print-document .logistics-print-day.is-preparation .logistics-print-title {
+    height: auto;
+    margin-bottom: 2mm;
+    padding-bottom: 1.5mm;
+  }
+
+  .logistics-print-document .logistics-print-day.is-preparation .logistics-print-title > div {
+    font-size: 6pt;
+  }
+
+  .logistics-print-document .logistics-print-day.is-preparation .logistics-print-title h1 {
+    margin-top: 0.4mm;
+    font-size: 11pt;
+  }
+
+  .logistics-print-document .logistics-print-day.is-preparation .logistics-print-title > strong,
+  .logistics-print-document .logistics-print-day.is-preparation .logistics-print-title > span {
+    font-size: 6pt;
+  }
+
+  .logistics-print-document .logistics-print-day.is-festival {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .logistics-print-document .logistics-print-day.is-festival:first-child {
+    break-before: auto;
+    page-break-before: auto;
+  }
+
   .logistics-print-table {
     width: 100%;
     border-collapse: collapse;
