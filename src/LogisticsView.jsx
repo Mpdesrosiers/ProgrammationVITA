@@ -1045,7 +1045,10 @@ export default function LogisticsView({ canModify }) {
             );
 
             return (
-          <section key={`${date}-${pageIndex}`} className="logistics-print-day">
+          <section
+            key={`${date}-${pageIndex}`}
+            className={`logistics-print-day ${date < FESTIVAL_START_DATE ? "is-preparation" : "is-festival"}`}
+          >
             <header className="logistics-print-title">
               <div>FESTIVAL VITA 2026 · DÉROULEMENT LOGISTIQUE</div>
               <h1>{displayDate(date)}{printPages.length > 1 ? ` · ${pageIndex + 1}/${printPages.length}` : ""}</h1>
